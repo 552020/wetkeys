@@ -4,6 +4,17 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Null,
     'NotFound' : IDL.Null,
   });
+  const file_data = IDL.Record({
+    'contents' : IDL.Vec(IDL.Nat8),
+    'file_type' : IDL.Text,
+    'num_chunks' : IDL.Nat64,
+  });
+  const download_file_response = IDL.Variant({
+    'found_file' : file_data,
+    'permission_error' : IDL.Null,
+    'not_uploaded_file' : IDL.Null,
+    'not_found_file' : IDL.Null,
+  });
   const file_status = IDL.Variant({
     'partially_uploaded' : IDL.Null,
     'pending' : IDL.Record({ 'alias' : IDL.Text, 'requested_at' : IDL.Nat64 }),
@@ -14,16 +25,14 @@ export const idlFactory = ({ IDL }) => {
     'file_name' : IDL.Text,
     'file_id' : file_id,
   });
-  const file = IDL.Record({
-    'contents' : IDL.Opt(IDL.Vec(IDL.Nat8)),
-    'metadata' : file_metadata,
+  const register_file_request = IDL.Record({
+    'blob_id' : IDL.Opt(IDL.Text),
+    'file_name' : IDL.Text,
+    'requested_at' : IDL.Nat64,
+    'storage_provider' : IDL.Text,
+    'uploaded_at' : IDL.Opt(IDL.Nat64),
   });
-  const download_file_response = IDL.Variant({
-    'Ok' : file,
-    'permission_error' : IDL.Null,
-    'not_uploaded_file' : IDL.Null,
-    'not_found_file' : IDL.Null,
-  });
+  const register_file_response = IDL.Record({ 'file_id' : file_id });
   const upload_file_atomic_request = IDL.Record({
     'content' : IDL.Vec(IDL.Nat8),
     'name' : IDL.Text,
@@ -53,6 +62,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'greet' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
     'list_files' : IDL.Func([], [IDL.Vec(file_metadata)], ['query']),
+    'register_file' : IDL.Func(
+        [register_file_request],
+        [register_file_response],
+        [],
+      ),
     'upload_file_atomic' : IDL.Func(
         [upload_file_atomic_request],
         [file_id],

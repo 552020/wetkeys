@@ -1,8 +1,8 @@
 import { useState } from "react";
 import FileUpload from "./components/FileUpload";
+import FileList from "./components/FileList";
 import { vtk_backend } from "declarations/vtk_backend";
 import { Button } from "@/components/ui/button";
-import ListFiles from "./components/ListFiles";
 
 function App() {
   const [greeting, setGreeting] = useState("");
@@ -28,7 +28,7 @@ function App() {
       </form>
       <section id="greeting">{greeting}</section>
       <FileUpload />
-      <ListFiles />
+      <FileList />
       <div class="bg-blue-500 text-white text-xl p-4 rounded">✅ Tailwind is working!</div>
       <Button>Click me</Button>
     </main>

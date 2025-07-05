@@ -1,5 +1,19 @@
 type file_id = nat64;
 
+// New types for register_file
+
+type register_file_request = record {
+  file_name : text;
+  storage_provider : text;
+  blob_id : opt text;
+  requested_at : nat64;
+  uploaded_at : opt nat64;
+};
+
+type register_file_response = record {
+  file_id : file_id;
+};
+
 type file_metadata = record {
   file_id : file_id;
   file_name : text;
@@ -18,9 +32,10 @@ type user = record {
   // ic_principal : principal;
 };
 
-type file = record {
-  metadata : file_metadata;
-  contents : opt blob;
+type file_data = record {
+  contents : blob;
+  file_type : text;
+  num_chunks : nat64;
 };
 
 type upload_file_request = record {
@@ -59,7 +74,7 @@ type download_file_response = variant {
   not_found_file;
   not_uploaded_file;
   permission_error;
-  Ok : file;
+  found_file : file_data;
 };
 
 type delete_file_response = variant {
@@ -74,4 +89,5 @@ service : {
   list_files : () -> (vec file_metadata) query;
   greet : (name : text) -> (text) query;
   delete_file : (file_id : file_id) -> (delete_file_response);
+  register_file : (register_file_request) -> (register_file_response);
 }

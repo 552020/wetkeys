@@ -40,6 +40,8 @@ pub struct FileMetadata {
     pub requester_principal: Principal,
     pub requested_at: u64,
     pub uploaded_at: Option<u64>,
+    pub storage_provider: String, // "icp" or "walrus"
+    pub blob_id: Option<String>,  // Only for Walrus files
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -88,9 +90,9 @@ pub enum FileContent {
 
 #[derive(CandidType, Serialize, Deserialize, Debug, PartialEq)]
 pub struct FileData {
-    contents: Vec<u8>,
-    file_type: String,
-    num_chunks: u64,
+    pub contents: Vec<u8>,
+    pub file_type: String,
+    pub num_chunks: u64,
 }
 
 #[derive(CandidType, Serialize, Deserialize, PartialEq, Debug)]

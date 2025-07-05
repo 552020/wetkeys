@@ -4,6 +4,7 @@ use vtk_backend::*;
 use vtk_backend::api::{UploadFileAtomicRequest, ShareFileRequest};
 use vtk_backend::api::DeleteFileResult;
 use candid::Principal;
+use vtk_backend::api::{RegisterFileRequest, RegisterFileResponse};
 
 #[update]
 async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, VetKeysError> {
@@ -19,6 +20,11 @@ async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, Vet
 #[update]
 fn upload_file_continue(request: UploadFileContinueRequest) {
     with_state_mut(|s| vtk_backend::api::upload_file_continue(request, s))
+}
+
+#[update]
+fn register_file(request: RegisterFileRequest) -> RegisterFileResponse {
+    vtk_backend::api::register_file(request)
 }
 
 #[query]

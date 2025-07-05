@@ -2,5 +2,8 @@
   {
     match: "**/*",
     security_policy: "standard",
+    headers: {
+      "Content-Security-Policy": "default-src 'self'; ... connect-src 'self' https://publisher.walrus-testnet.walrus.space ...",
+    },
   },
 ]

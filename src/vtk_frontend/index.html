@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>IC Hello Starter</title>
+    <base href="/" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'self' http://localhost:* https://icp0.io https://icp-api.io https://publisher.walrus-testnet.walrus.space;"
+    />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width" />
-  <title>IC Hello Starter</title>
-  <base href="/" />
-  <link rel="icon" href="/favicon.ico" />
-</head>
-
-<body>
-  <div class="browser-warning">
-    ⚠️ If this page appears broken, try reloading. If the problem persists, try switching browsers; Chrome or
-    Firefox are recommended.
-  </div>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
-
+  <body>
+    <div class="browser-warning">
+      ⚠️ If this page appears broken, try reloading. If the problem persists, try switching browsers; Chrome or Firefox
+      are recommended.
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

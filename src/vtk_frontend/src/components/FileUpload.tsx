@@ -7,6 +7,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import walrusWasmUrl from "@mysten/walrus-wasm/web/walrus_wasm_bg.wasm?url";
 import { Buffer } from "buffer";
 import { createVetKeysManager, VetKeysManager } from "../lib/vetkeys";
+import { downloadFile, deleteFile } from "../services/fileService";
 
 // CREATE THE CLIENTS
 const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
@@ -17,6 +18,9 @@ const walrusClient = new WalrusClient({
 });
 
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+
+// Default Walrus publisher endpoint for API upload
+const DEFAULT_PUBLISHER_API = "https://publisher.walrus-testnet.walrus.space/v1/blobs";
 
 export default function FileUpload() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -30,6 +34,8 @@ export default function FileUpload() {
 
   // USER CHOICE STATE
   const [uploadTarget, setUploadTarget] = useState<"icp" | "walrus" | "vetkeys">("vetkeys");
+  // New: Upload method state
+  const [method, setMethod] = useState<"SDK" | "API">("SDK");
 
   // TODO: PRODUCTION - Add wallet connection state
   // const [wallet, setWallet] = useState<any>(null);
@@ -72,7 +78,7 @@ export default function FileUpload() {
 
     // Generate a file_id (in production, get this from backend or a UUID)
     const file_id = BigInt(fileIdCounter);
-    setFileIdCounter((id) => id + 1);
+    setFileIdCounter((id: number) => id + 1);
 
     try {
       if (uploadTarget === "vetkeys") {
@@ -153,52 +159,64 @@ export default function FileUpload() {
         // }
 
         // WALRUS UPLOAD LOGIC
-        setProgress(50); // Show progress for Walrus upload
+        setProgress(10); // Show progress for Walrus upload
 
-        const blob = new Uint8Array(await file.arrayBuffer());
-        // TODO: PRODUCTION - Replace with real wallet integration
-        // - Connect to user's actual Sui wallet (Sui Wallet, Suiet, etc.)
-        // - Get signer from connected wallet
-        // - Check SUI and WAL token balances before upload
-
-        // DEVELOPMENT: Use persistent keypair from environment
-        // In production, replace this with real wallet integration
-        const secretKey = import.meta.env.VITE_SUI_SECRET_KEY;
-        const bytes = Uint8Array.from(Buffer.from(secretKey, "base64"));
-        if (bytes.length !== 32) throw new Error("Secret key must be 32 bytes");
-        const keypair = Ed25519Keypair.fromSecretKey(bytes);
-        // const secretKey = import.meta.env.VITE_SUI_SECRET_KEY;
-        if (!secretKey) {
-          throw new Error("VITE_SUI_SECRET_KEY environment variable not set");
+        if (method === "SDK") {
+          // SDK upload logic (existing)
+          const blob = new Uint8Array(await file.arrayBuffer());
+          const secretKey = import.meta.env.VITE_SUI_SECRET_KEY;
+          const bytes = Uint8Array.from(Buffer.from(secretKey, "base64"));
+          if (bytes.length !== 32) throw new Error("Secret key must be 32 bytes");
+          const keypair = Ed25519Keypair.fromSecretKey(bytes);
+          const { blobId } = await walrusClient.writeBlob({
+            blob,
+            deletable: false,
+            epochs: 3,
+            signer: keypair,
+          });
+          console.log("Uploaded to Walrus with blobId:", blobId);
+          // Register in backend
+          const now = BigInt(Date.now());
+          await vtk_backend.register_file({
+            file_name: file.name,
+            storage_provider: "walrus",
+            blob_id: [blobId],
+            requested_at: now,
+            uploaded_at: [now],
+          });
+          setProgress(100);
+        } else if (method === "API") {
+          // API upload logic (basic, hardcoded endpoint)
+          setProgress(20);
+          const apiUrl = DEFAULT_PUBLISHER_API;
+          const formData = new FormData();
+          formData.append("file", file, file.name);
+          // For Walrus, the API expects the raw file as the body, not multipart/form-data
+          // So we use fetch with PUT and the file as the body
+          const response = await fetch(apiUrl, {
+            method: "PUT",
+            body: file,
+            // headers: { ... } // Add headers if needed
+          });
+          if (!response.ok) {
+            throw new Error(`API upload failed: ${response.status} ${response.statusText}`);
+          }
+          const result = await response.json();
+          console.log("API upload result:", result);
+          // Try to extract blobId from result
+          const blobId = result?.newlyCreated?.blobObject?.blobId || result?.alreadyCertified?.blobId;
+          if (!blobId) throw new Error("No blobId returned from Walrus API");
+          // Register in backend
+          const now = BigInt(Date.now());
+          await vtk_backend.register_file({
+            file_name: file.name,
+            storage_provider: "walrus",
+            blob_id: [blobId],
+            requested_at: now,
+            uploaded_at: [now],
+          });
+          setProgress(100);
         }
-
-        console.log("Secret key (base64):", secretKey);
-        console.log("Secret key length (base64):", secretKey.length);
-
-        // Convert base64 string to Uint8Array properly
-        const binaryString = atob(secretKey);
-        console.log("Binary string length:", binaryString.length);
-
-        // const bytes = new Uint8Array(binaryString.length);
-        // for (let i = 0; i < binaryString.length; i++) {
-        //   bytes[i] = binaryString.charCodeAt(i);
-        // }
-        // const bytes = Uint8Array.from(Buffer.from(secretKey, "base64"));
-
-        console.log("Bytes array length:", bytes.length);
-        console.log("First 10 bytes:", bytes.slice(0, 10));
-        console.log("Last 10 bytes:", bytes.slice(-10));
-
-        // const keypair = Ed25519Keypair.fromSecretKey(bytes);
-        const { blobId } = await walrusClient.writeBlob({
-          blob,
-          deletable: false,
-          epochs: 3,
-          signer: keypair,
-        });
-
-        console.log("Uploaded to Walrus with blobId:", blobId);
-        setProgress(100);
       }
 
       setSuccess(true);
@@ -242,6 +260,23 @@ export default function FileUpload() {
           <option value="icp">Upload to ICP</option>
           <option value="walrus">Upload to Walrus</option>
         </select>
+        {/* New: Upload method selection */}
+        {uploadTarget === "walrus" && (
+          <>
+            <label htmlFor="uploadMethod" className="text-sm font-medium text-gray-700">
+              Method:
+            </label>
+            <select
+              id="uploadMethod"
+              value={method}
+              onChange={(e) => setMethod(e.target.value as "SDK" | "API")}
+              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+            >
+              <option value="SDK">SDK</option>
+              <option value="API">API</option>
+            </select>
+          </>
+        )}
       </div>
 
       <input
@@ -264,6 +299,11 @@ export default function FileUpload() {
           <div>
             <strong>Target:</strong> {uploadTarget === "icp" ? "Internet Computer" : uploadTarget === "walrus" ? "Walrus (Sui)" : "VetKeys"}
           </div>
+          {uploadTarget === "walrus" && (
+            <div>
+              <strong>Method:</strong> {method}
+            </div>
+          )}
         </div>
       )}
 
@@ -271,7 +311,7 @@ export default function FileUpload() {
         <div className="w-full max-w-md">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-blue-700">
-              Uploading to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? "Walrus" : "VetKeys"}...
+              Uploading to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? "Walrus" : "VetKeys"} {uploadTarget === "walrus" ? `(${method})` : ""}...
             </span>
             <span className="text-xs font-medium text-blue-700">{progress}%</span>
           </div>
@@ -285,58 +325,10 @@ export default function FileUpload() {
       )}
       {error && <p className="text-red-500">❌ {error}</p>}
       {success && (
-        <p className="text-green-600">✅ Upload successful to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? "Walrus" : "VetKeys"}!</p>
+        <p className="text-green-600">
+          ✅ Upload successful to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? `Walrus (${method})` : "VetKeys"}!
+        </p>
       )}
-    </div>
-  );
-}
-
-// FileList component: lists files from the backend
-export function FileList() {
-  const [files, setFiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchFiles() {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await vtk_backend.list_files();
-        setFiles(result);
-      } catch (err) {
-        setError((err as Error).message || "Failed to fetch files");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchFiles();
-  }, []);
-
-  if (loading) return <div>Loading files...</div>;
-  if (error) return <div className="text-red-500">❌ {error}</div>;
-  if (files.length === 0) return <div>No files found.</div>;
-
-  return (
-    <div className="my-6">
-      <h2 className="font-bold mb-2">Uploaded Files (ICP)</h2>
-      <ul className="space-y-2">
-        {files.map((file, idx) => (
-          <li key={file.file_id ?? idx} className="border p-2 rounded">
-            <div>
-              <strong>Name:</strong> {file.file_name}
-            </div>
-            <div>
-              <strong>Status:</strong> {JSON.stringify(file.file_status)}
-            </div>
-            {file.size && (
-              <div>
-                <strong>Size:</strong> {file.size} bytes
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

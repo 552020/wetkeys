@@ -118,6 +118,8 @@ pub async fn upload_file_atomic(request: UploadFileAtomicRequest, state: &mut St
                 requester_principal: request.caller,
                 requested_at: crate::get_time(),
                 uploaded_at: Some(crate::get_time()),
+                storage_provider: "icp".to_string(),
+                blob_id: None,
             },
             content,
         },
