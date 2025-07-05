@@ -9,7 +9,7 @@
 - [x] Emit events (e.g. `PaymentReceived(fileId, payer, amount)`)
 - [ ] Add optional logic for fileId hash, access control, or payment reason
 - [x] Write deployment script (`deploy.ts`)
-- [ ] Deploy to Base **Sepolia** (testnet)
+- [x] Deploy to Base **Sepolia** (testnet)
 
 ---
 
