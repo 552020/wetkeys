@@ -17,14 +17,12 @@
       "type": "rust"
     },
     "vtk_frontend": {
-      "dependencies": [
-        "vtk_backend"
-      ],
-      "source": [
-        "src/vtk_frontend/dist"
-      ],
-      "type": "assets",
-      "workspace": "vtk_frontend"
+      "dependencies": ["vtk_backend"],
+      "frontend": {
+        "entrypoint": "src/vtk_frontend/index.html"
+      },
+      "source": ["src/vtk_frontend/dist"],
+      "type": "assets"
     }
   },
   "defaults": {
