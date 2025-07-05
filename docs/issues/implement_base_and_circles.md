@@ -4,11 +4,11 @@
 
 - [x] Create `evm/` directory for EVM contract logic
 - [x] Install Hardhat + dependencies in `evm/`
-- [ ] Write and test a **Payment contract** (accepts USDC)
-- [ ] Use **USDC contract address on Base** (testnet/mainnet)
-- [ ] Emit events (e.g. `PaymentReceived(fileId, payer, amount)`)
+- [x] Write and test a **Payment contract** (accepts USDC)
+- [x] Use **USDC contract address on Base** (testnet/mainnet)
+- [x] Emit events (e.g. `PaymentReceived(fileId, payer, amount)`)
 - [ ] Add optional logic for fileId hash, access control, or payment reason
-- [ ] Write deployment script (`deploy.ts`)
+- [x] Write deployment script (`deploy.ts`)
 - [ ] Deploy to Base **Sepolia** (testnet)
 
 ---
