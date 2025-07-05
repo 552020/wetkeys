@@ -22,6 +22,9 @@ rand = "0.7.3"
 rand_chacha = "0.2.2"
 serde = "1.0.217"
 serde_bytes = "0.11.15"
+# vetKeys dependencies
+vetkd_utils = { git = "https://github.com/dfinity/vetkeys", branch = "main" }
+encrypted_maps = { git = "https://github.com/dfinity/vetkeys", branch = "main" }
 
 [dev-dependencies]
 maplit = "1.0.2"

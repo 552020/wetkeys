@@ -1,8 +1,9 @@
 pub mod api;
+pub mod vetkeys;
 mod memory;
 
 use candid::CandidType;
-// use candid::Principal;
+use candid::Principal;
 use ic_stable_structures::{
     // memory_manager::MemoryId,
     // storable::Storable, // Import Bound from storable submodule
@@ -14,10 +15,13 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 // use std::ops::Bound::{Included, Excluded};
+use vetkeys::{VetKeysManager, EncryptedFileData, VetKeysError};
 
 thread_local! {
     /// Initialize the state randomness with the current time.
     static STATE: RefCell<State> = RefCell::new(State::new(&get_randomness_seed()[..]));
+    /// Initialize the vetKeys manager
+    static VETKEYS_MANAGER: RefCell<VetKeysManager> = RefCell::new(VetKeysManager::new());
 }
 
 type FileId = u64;
@@ -33,8 +37,7 @@ pub struct FileInfo {
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct FileMetadata {
     pub file_name: String,
-    // pub user_public_key: Vec<u8>,
-    // pub requester_principal: Principal,
+    pub requester_principal: Principal,
     pub requested_at: u64,
     pub uploaded_at: Option<u64>,
 }
@@ -48,8 +51,6 @@ pub enum FileStatus {
     #[serde(rename = "uploaded")]
     Uploaded {
         uploaded_at: u64,
-        // No document_key needed here as we moved to vertkeys
-        // document_key: Vec<u8>,
     },
 }
 
@@ -60,7 +61,6 @@ pub struct PublicFileMetadata {
     pub group_name: String,
     pub group_alias: Option<String>,
     pub file_status: FileStatus,
-    // pub shared_with: Vec<PublicUser>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,7 +68,6 @@ pub struct File {
     pub metadata: FileMetadata,
     pub content: FileContent,
 }
-
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FileContent {
@@ -78,26 +77,19 @@ pub enum FileContent {
     Uploaded {
         num_chunks: u64,
         file_type: String,
-        // owner_key: Vec<u8>, // VetKD public key
-        // No need for shared_keys map as we are moving to vetkeys
-        // shared_keys: BTreeMap<Principal, Vec<u8>>,
+        encrypted_file_data: EncryptedFileData,
     },
     PartiallyUploaded {
         num_chunks: u64,
         file_type: String,
-        // owner_key: Vec<u8>, // VetKD public key
-        // No need for shared_keys map as we are moving to vetkeys
-        // shared_keys: BTreeMap<Principal, Vec<u8>>,
+        encrypted_file_data: Option<EncryptedFileData>,
     },
 }
-
 
 #[derive(CandidType, Serialize, Deserialize, Debug, PartialEq)]
 pub struct FileData {
     contents: Vec<u8>,
     file_type: String,
-    // Remove owner_key field as it's not needed with VetKD
-    // owner_key: Vec<u8>,
     num_chunks: u64,
 }
 
@@ -109,6 +101,8 @@ pub enum FileDownloadResponse {
     NotUploadedFile,
     #[serde(rename = "permission_error")]
     PermissionError,
+    #[serde(rename = "decryption_error")]
+    DecryptionError,
     #[serde(rename = "found_file")]
     FoundFile(FileData),
 }
@@ -119,6 +113,8 @@ pub enum UploadFileError {
     NotRequested,
     #[serde(rename = "already_uploaded")]
     AlreadyUploaded,
+    #[serde(rename = "encryption_failed")]
+    EncryptionFailed,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug, PartialEq)]
@@ -127,10 +123,11 @@ pub enum FileSharingResponse {
     PendingError,
     #[serde(rename = "permission_error")]
     PermissionError,
+    #[serde(rename = "encryption_error")]
+    EncryptionError,
     #[serde(rename = "ok")]
     Ok,
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub struct State {
@@ -138,28 +135,16 @@ pub struct State {
     // and is used to assign IDs to newly requested files.
     file_count: u64,
 
-    // Keeps track of usernames vs. their principals.
-    // pub users: BTreeMap<Principal, User>,
-
     /// Mapping between file IDs and file information.
     pub file_data: BTreeMap<u64, File>,
-
-
-    // Mapping between a user's principal and the list of files that are owned by the user.
-    // pub file_owners: BTreeMap<Principal, Vec<u64>>,
-
-    // Mapping between a user's principal and the list of files that are shared with them.
-    // pub file_shares: BTreeMap<Principal, Vec<u64>>,
 
     /// The contents of the file (stored in stable memory).
     #[serde(skip, default = "init_file_contents")]
     pub file_contents: StableBTreeMap<(FileId, ChunkId), Vec<u8>, Memory>,
-
 }
 
 impl State {
     pub(crate) fn generate_file_id(&mut self) -> u64 {
-
         let file_id = self.file_count;
         self.file_count += 1;
         file_id
@@ -168,17 +153,10 @@ impl State {
     fn new(_rand_seed: &[u8]) -> Self {
         Self {
             file_count: 0,
-            // users: BTreeMap::new(),
             file_data: BTreeMap::new(),
             file_contents: init_file_contents(),
         }
     }
-
-    // pub(crate) fn num_chunks_uploaded(&self, file_id: u64) -> u64 {
-    //     self.file_contents
-    //         .range((Included((file_id, 0u64)), Excluded(((file_id + 1), 0u64))))
-    //         .count() as u64
-    // }
 }
 
 // This is a standard Rust pattern for initializing the state.
@@ -196,6 +174,16 @@ pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
 /// Precondition: the state is already initialized.
 pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
     STATE.with(|cell| f(&mut cell.borrow_mut()))
+}
+
+/// Get the vetKeys manager
+pub fn with_vetkeys_manager<R>(f: impl FnOnce(&VetKeysManager) -> R) -> R {
+    VETKEYS_MANAGER.with(|cell| f(&cell.borrow()))
+}
+
+/// Get the vetKeys manager mutably
+pub fn with_vetkeys_manager_mut<R>(f: impl FnOnce(&mut VetKeysManager) -> R) -> R {
+    VETKEYS_MANAGER.with(|cell| f(&mut cell.borrow_mut()))
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -233,7 +221,6 @@ fn get_randomness_seed() -> Vec<u8> {
     let zeroes_arr: [u8; 24] = [0; 24];
     [&time_seed[..], &zeroes_arr[..]].concat()
 }
-
 
 pub fn ceil_division(dividend: usize, divisor: usize) -> usize {
     if dividend % divisor == 0 {

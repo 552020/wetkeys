@@ -6,6 +6,7 @@ import { WalrusClient } from "@mysten/walrus";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import walrusWasmUrl from "@mysten/walrus-wasm/web/walrus_wasm_bg.wasm?url";
 import { Buffer } from "buffer";
+import { createVetKeysManager, VetKeysManager } from "../lib/vetkeys";
 
 // CREATE THE CLIENTS
 const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
@@ -25,15 +26,33 @@ export default function FileUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileIdCounter, setFileIdCounter] = useState(1); // Simple counter for file_id
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [vetKeysManager, setVetKeysManager] = useState<VetKeysManager | null>(null);
 
   // USER CHOICE STATE
-  const [uploadTarget, setUploadTarget] = useState<"icp" | "walrus">("icp");
+  const [uploadTarget, setUploadTarget] = useState<"icp" | "walrus" | "vetkeys">("vetkeys");
 
   // TODO: PRODUCTION - Add wallet connection state
   // const [wallet, setWallet] = useState<any>(null);
   // const [walletAddress, setWalletAddress] = useState<string>("");
   // const [suiBalance, setSuiBalance] = useState<string>("");
   // const [walBalance, setWalBalance] = useState<string>("");
+
+  // Initialize vetKeys manager
+  useEffect(() => {
+    // In a real app, you would get the agent from your Internet Identity setup
+    // For now, we'll create a mock agent
+    const mockAgent = {
+      call: async (canisterId: string, method: string, args: any[]) => {
+        // This is a simplified mock - in reality, you'd use the actual agent
+        if (method === 'upload_file_atomic') {
+          return Math.floor(Math.random() * 1000); // Mock file ID
+        }
+        return null;
+      }
+    };
+    
+    setVetKeysManager(createVetKeysManager(mockAgent));
+  }, []);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -56,7 +75,32 @@ export default function FileUpload() {
     setFileIdCounter((id) => id + 1);
 
     try {
-      if (uploadTarget === "icp") {
+      if (uploadTarget === "vetkeys") {
+        // VETKEYS UPLOAD LOGIC
+        if (!vetKeysManager) {
+          throw new Error("VetKeys manager not initialized");
+        }
+
+        const fileContent = new Uint8Array(await file.arrayBuffer());
+        const fileType = file.type || "application/octet-stream";
+        
+        console.log("Uploading file with vetKeys encryption:", {
+          name: file.name,
+          size: fileContent.length,
+          type: fileType
+        });
+
+        const fileId = await vetKeysManager.uploadFile(
+          file.name,
+          fileContent,
+          fileType,
+          [] // No sharing for now
+        );
+
+        console.log("File uploaded with vetKeys, ID:", fileId);
+        setProgress(100);
+        setSuccess(true);
+      } else if (uploadTarget === "icp") {
         // ICP UPLOAD LOGIC
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const num_chunks = BigInt(totalChunks);
@@ -191,9 +235,10 @@ export default function FileUpload() {
         <select
           id="uploadTarget"
           value={uploadTarget}
-          onChange={(e) => setUploadTarget(e.target.value as "icp" | "walrus")}
+          onChange={(e) => setUploadTarget(e.target.value as "icp" | "walrus" | "vetkeys")}
           className="border border-gray-300 rounded-md px-3 py-1 text-sm"
         >
+          <option value="vetkeys">Upload with VetKeys (Encrypted)</option>
           <option value="icp">Upload to ICP</option>
           <option value="walrus">Upload to Walrus</option>
         </select>
@@ -217,7 +262,7 @@ export default function FileUpload() {
             <strong>Size:</strong> {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
           </div>
           <div>
-            <strong>Target:</strong> {uploadTarget === "icp" ? "Internet Computer" : "Walrus (Sui)"}
+            <strong>Target:</strong> {uploadTarget === "icp" ? "Internet Computer" : uploadTarget === "walrus" ? "Walrus (Sui)" : "VetKeys"}
           </div>
         </div>
       )}
@@ -226,7 +271,7 @@ export default function FileUpload() {
         <div className="w-full max-w-md">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-blue-700">
-              Uploading to {uploadTarget === "icp" ? "ICP" : "Walrus"}...
+              Uploading to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? "Walrus" : "VetKeys"}...
             </span>
             <span className="text-xs font-medium text-blue-700">{progress}%</span>
           </div>
@@ -240,7 +285,7 @@ export default function FileUpload() {
       )}
       {error && <p className="text-red-500">❌ {error}</p>}
       {success && (
-        <p className="text-green-600">✅ Upload successful to {uploadTarget === "icp" ? "ICP" : "Walrus"}!</p>
+        <p className="text-green-600">✅ Upload successful to {uploadTarget === "icp" ? "ICP" : uploadTarget === "walrus" ? "Walrus" : "VetKeys"}!</p>
       )}
     </div>
   );

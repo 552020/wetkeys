@@ -1,12 +1,19 @@
 // use ic_cdk_macros::{post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::{query, update};
 use vtk_backend::*;
-use vtk_backend::api::UploadFileAtomicRequest;
+use vtk_backend::api::{UploadFileAtomicRequest, ShareFileRequest};
 use vtk_backend::api::DeleteFileResult;
+use candid::Principal;
 
 #[update]
-fn upload_file_atomic(request: UploadFileAtomicRequest) -> u64 {
-    with_state_mut(|s| vtk_backend::api::upload_file_atomic(request, s))
+async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, VetKeysError> {
+    let caller = ic_cdk::caller();
+    let mut request_with_caller = request;
+    request_with_caller.caller = caller;
+    
+    with_state_mut(|s| async {
+        vtk_backend::api::upload_file_atomic(request_with_caller, s).await
+    }).await
 }
 
 #[update]
@@ -15,8 +22,11 @@ fn upload_file_continue(request: UploadFileContinueRequest) {
 }
 
 #[query]
-fn download_file(file_id: u64, chunk_id: u64) -> FileDownloadResponse {
-    with_state(|s| vtk_backend::api::download_file(s, file_id, chunk_id))
+async fn download_file(file_id: u64, chunk_id: u64) -> FileDownloadResponse {
+    let caller = ic_cdk::caller();
+    with_state(|s| async {
+        vtk_backend::api::download_file(s, file_id, chunk_id, caller).await
+    }).await
 }
 
 #[update]
@@ -24,6 +34,13 @@ fn delete_file(file_id: u64) -> DeleteFileResult {
     with_state_mut(|s| vtk_backend::api::delete_file(s, file_id))
 }
 
+#[update]
+async fn share_file(request: ShareFileRequest) -> FileSharingResponse {
+    let caller = ic_cdk::caller();
+    with_state_mut(|s| async {
+        vtk_backend::api::share_file(s, request.file_id, caller, request).await
+    }).await
+}
 
 #[query]
 fn list_files() -> Vec<PublicFileMetadata> {
@@ -51,11 +68,9 @@ fn list_files() -> Vec<PublicFileMetadata> {
     })
 }
 
-
 #[query]
 fn greet(name: String) -> String {
     format!("Hello, {}!", name)
 }
-
 
 fn main() {}

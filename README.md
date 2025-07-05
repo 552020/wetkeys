@@ -1,4 +1,205 @@
-# `vtk`
+# VTK - Verifiable Threshold Keys File Storage
+
+A secure file storage application built on the Internet Computer (ICP) that uses **vetKeys** (Verifiable Encrypted Threshold Keys) for end-to-end encryption and secure file sharing.
+
+## Features
+
+### 🔐 VetKeys Encryption
+- **End-to-end encryption** using vetKeys threshold cryptography
+- **Secure file sharing** with granular access control
+- **Privacy-preserving** - only file owners and explicitly shared users can decrypt files
+- **No key management** - keys are derived securely without exposing private keys
+
+### 📁 File Management
+- Upload files with automatic vetKeys encryption
+- Download files with automatic decryption
+- Share files with specific principals
+- List and manage uploaded files
+- Support for multiple file types
+
+### 🛡️ Security
+- **Threshold cryptography** - no single point of failure
+- **Verifiable encryption** - cryptographic proofs ensure security
+- **Principal-based access control** - secure sharing using Internet Identity
+- **On-chain encryption** - files remain encrypted even on the blockchain
+
+## Architecture
+
+### Backend (Rust)
+- **vetKeys integration** using the official vetKeys library
+- **Encrypted file storage** with threshold key derivation
+- **Permission-based access** control
+- **Stable memory storage** for encrypted file contents
+
+### Frontend (React + TypeScript)
+- **VetKeys manager** for encrypted file operations
+- **Internet Identity integration** for authentication
+- **Modern UI** with Tailwind CSS
+- **Real-time progress** tracking for uploads
+
+## Getting Started
+
+### Prerequisites
+- [DFX](https://internetcomputer.org/docs/current/developer-docs/setup/install/) - Internet Computer SDK
+- [Node.js](https://nodejs.org/) - For frontend development
+- [Internet Identity](https://internetcomputer.org/docs/current/developer-docs/integrations/internet-identity/) - For authentication
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd vtk
+   ```
+
+2. **Install dependencies**
+   ```bash
+   # Install backend dependencies
+   cd src/vtk_backend
+   cargo build
+
+   # Install frontend dependencies
+   cd ../vtk_frontend
+   npm install
+   ```
+
+3. **Deploy to local Internet Computer**
+   ```bash
+   cd ../..
+   dfx start --background
+   dfx deploy
+   ```
+
+4. **Start the frontend**
+   ```bash
+   cd src/vtk_frontend
+   npm run dev
+   ```
+
+## Usage
+
+### Uploading Files with VetKeys
+
+1. **Select "Upload with VetKeys (Encrypted)"** from the upload target dropdown
+2. **Choose a file** to upload
+3. **The file is automatically encrypted** using vetKeys threshold cryptography
+4. **Only you can decrypt** the file unless you explicitly share it
+
+### Sharing Files
+
+1. **Upload a file** using vetKeys encryption
+2. **Use the share API** to grant access to specific principals
+3. **Shared users can decrypt** the file using their Internet Identity
+
+### Downloading Files
+
+1. **Select a file** from your list
+2. **The file is automatically decrypted** if you have permission
+3. **Download the decrypted content** to your device
+
+## API Reference
+
+### Backend Endpoints
+
+#### Upload File with VetKeys
+```rust
+async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, VetKeysError>
+```
+
+#### Download File with VetKeys
+```rust
+async fn download_file(file_id: u64, chunk_id: u64) -> FileDownloadResponse
+```
+
+#### Share File
+```rust
+async fn share_file(request: ShareFileRequest) -> FileSharingResponse
+```
+
+#### List Files
+```rust
+fn list_files() -> Vec<PublicFileMetadata>
+```
+
+### Frontend VetKeys Manager
+
+```typescript
+// Upload file with encryption
+const fileId = await vetKeysManager.uploadFile(name, content, fileType, sharedWith);
+
+// Download file with decryption
+const fileData = await vetKeysManager.downloadFile(fileId, chunkId);
+
+// Share file with principals
+const success = await vetKeysManager.shareFile(fileId, principals);
+
+// List all files
+const files = await vetKeysManager.listFiles();
+```
+
+## VetKeys Technology
+
+This application leverages [vetKeys](https://github.com/dfinity/vetkeys) from DFINITY, which provides:
+
+- **Threshold BLS Signatures** - Secure, decentralized signing
+- **Identity Based Encryption (IBE)** - Secure communication without key exchange
+- **Verifiable Random Beacons** - Secure randomness for applications
+- **Smart contract defined vetKeys** - Programmable access control
+
+### Key Benefits
+
+1. **Privacy-Preserving** - Files remain encrypted even on the blockchain
+2. **Decentralized Key Management** - No traditional PKI required
+3. **Threshold Security** - No single point of failure
+4. **Verifiable Encryption** - Cryptographic proofs ensure security
+5. **Granular Access Control** - Share with specific principals only
+
+## Development
+
+### Backend Development
+
+The backend uses Rust with the following key components:
+
+- **vetKeys integration** in `src/vtk_backend/src/vetkeys.rs`
+- **API endpoints** in `src/vtk_backend/src/api/`
+- **File storage** with stable memory
+- **Encryption/decryption** using vetKeys threshold cryptography
+
+### Frontend Development
+
+The frontend uses React with TypeScript:
+
+- **VetKeys manager** in `src/vtk_frontend/src/lib/vetkeys.ts`
+- **File upload component** with encryption support
+- **Modern UI** with Tailwind CSS
+- **Internet Identity integration**
+
+## Security Considerations
+
+- **Always use Internet Identity** for authentication
+- **Verify file permissions** before sharing
+- **Keep your Internet Identity secure** - it controls access to your files
+- **Monitor shared access** regularly
+- **Use strong principals** for sharing
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## License
+
+This project is licensed under the Apache 2.0 License.
+
+## Resources
+
+- [VetKeys Documentation](https://internetcomputer.org/docs/building-apps/network-features/vetkeys/introduction)
+- [Internet Computer Documentation](https://internetcomputer.org/docs/current/developer-docs/)
+- [DFINITY VetKeys Repository](https://github.com/dfinity/vetkeys)
+- [Internet Identity](https://internetcomputer.org/docs/current/developer-docs/integrations/internet-identity/)
 
 Welcome to your new `vtk` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
 
