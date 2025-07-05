@@ -38,47 +38,51 @@ function App() {
   }
 
   return (
-    <main>
-      <img src="/logo2.svg" alt="DFINITY logo" />
-      <br />
-      <br />
-      <form action="#" onSubmit={handleSubmit}>
+    <main className="max-w-2xl mx-auto p-6 flex flex-col gap-6">
+      <img src="/logo2.svg" alt="DFINITY logo" className="mx-auto mb-4" />
+      <form action="#" onSubmit={handleSubmit} className="flex items-center gap-2">
         <label htmlFor="name">Enter your name: &nbsp;</label>
-        <input id="name" alt="Name" type="text" />
-        <button type="submit">Click Me!</button>
+        <input id="name" alt="Name" type="text" className="border rounded px-2 py-1" />
+        <button type="submit" className="ml-2 px-3 py-1 bg-blue-600 text-white rounded">
+          Click Me!
+        </button>
       </form>
-      <section id="greeting">{greeting}</section>
+      <section id="greeting" className="text-lg font-medium">
+        {greeting}
+      </section>
       <FileUpload />
       <FileList />
       <div className="bg-blue-500 text-white text-xl p-4 rounded">✅ Tailwind is working!</div>
       <Button>Click me</Button>
 
       {/* RainbowKit Connect Button */}
-      <div style={{ marginTop: 32 }}>
+      <div className="mt-8">
         <ConnectButton />
       </div>
 
       {/* Pay for File UI */}
-      <div style={{ marginTop: 32 }}>
-        <h3>Pay for File (USDCReceiver)</h3>
-        <input
-          type="text"
-          placeholder="File ID"
-          value={fileId}
-          onChange={(e) => setFileId(e.target.value)}
-          style={{ marginRight: 8 }}
-        />
-        <input
-          type="number"
-          placeholder="Amount (USDC)"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          style={{ marginRight: 8 }}
-        />
-        <Button disabled={!write || isLoading} onClick={() => write?.()}>
-          {isLoading ? "Paying..." : "Pay for File"}
-        </Button>
-        {isSuccess && <div>✅ Payment sent!</div>}
+      <div className="mt-8 border rounded p-4 flex flex-col gap-3 bg-gray-50">
+        <h3 className="text-lg font-semibold mb-2">Pay for File (USDCReceiver)</h3>
+        <div className="flex gap-2 items-center">
+          <input
+            type="text"
+            placeholder="File ID"
+            value={fileId}
+            onChange={(e) => setFileId(e.target.value)}
+            className="border rounded px-2 py-1 flex-1"
+          />
+          <input
+            type="number"
+            placeholder="Amount (USDC)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="border rounded px-2 py-1 w-32"
+          />
+          <Button disabled={!write || isLoading} onClick={() => write?.()}>
+            {isLoading ? "Paying..." : "Pay for File"}
+          </Button>
+        </div>
+        {isSuccess && <div className="text-green-600 font-medium">✅ Payment sent!</div>}
       </div>
     </main>
   );

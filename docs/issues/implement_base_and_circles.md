@@ -17,7 +17,7 @@
 
 In `src/vtk_frontend`:
 
-- [ ] Add `ethers.js` or `wagmi` for smart contract interaction
+- [x] Add `ethers.js` or `wagmi` for smart contract interaction
 - [ ] Connect wallet via **Privy SDK** (or MetaMask for dev)
 - [ ] Build a `payThenUpload(file)` function:
 
