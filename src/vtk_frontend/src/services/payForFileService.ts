@@ -1,7 +1,5 @@
-// import { writeContract } from "wagmi/actions";
-import { writeContract } from "@wagmi/core";
+import { writeContract, getAccount } from "wagmi/actions";
 import { parseUnits } from "viem";
-import { getAccount } from "wagmi/actions"; // optional if you need current wallet
 // import USDCReceiverABI from "../abi/USDCReceiver.json";
 import { USDCReceiverABI } from "../../src/abi/USDCReceiver";
 import { config } from "../../config";

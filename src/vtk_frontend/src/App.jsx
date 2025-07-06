@@ -11,7 +11,7 @@ import { createActor, canisterId } from "declarations/vtk_backend";
 import { AuthClient } from "@dfinity/auth-client";
 import { Principal } from "@dfinity/principal";
 import { Button } from "@/components/ui/button";
-import { useAccount, usePrepareContractWrite, useContractWrite } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits } from "viem";
 import USDCReceiverABI from "./abi/USDCReceiver.json";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -37,15 +37,11 @@ function App() {
   // Wallet connection status
   const { address, isConnected } = useAccount();
 
-  // Prepare contract write
-  const { config } = usePrepareContractWrite({
-    address: USDC_RECEIVER_ADDRESS,
-    abi: USDCReceiverABI,
-    functionName: "payForFile",
-    args: [fileId, amount ? parseUnits(amount, 6) : 0],
-    enabled: Boolean(fileId && amount && isConnected),
+  // Contract write
+  const { writeContract, isPending, data: hash } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
   });
-  const { write, isLoading, isSuccess } = useContractWrite(config);
 
   useEffect(() => {
     AuthClient.create().then(async (client) => {
@@ -227,8 +223,18 @@ function App() {
                       onChange={(e) => setAmount(e.target.value)}
                       className="border rounded px-2 py-1 w-32"
                     />
-                    <Button disabled={!write || isLoading} onClick={() => write?.()}>
-                      {isLoading ? "Paying..." : "Pay for File"}
+                    <Button
+                      disabled={!fileId || !amount || !isConnected || isPending}
+                      onClick={() =>
+                        writeContract({
+                          address: USDC_RECEIVER_ADDRESS,
+                          abi: USDCReceiverABI,
+                          functionName: "payForFile",
+                          args: [fileId, parseUnits(amount, 6)],
+                        })
+                      }
+                    >
+                      {isPending ? "Paying..." : "Pay for File"}
                     </Button>
                   </div>
                   {isSuccess && <div className="text-green-600 font-medium">✅ Payment sent!</div>}

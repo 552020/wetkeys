@@ -103,7 +103,7 @@ export default function FileUpload({ actor }: { actor: any }) {
               setIsUploading(false);
               return;
             }
-            await vtk_backend.upload_file_continue({
+            await actor.upload_file_continue({
               file_id: backendFileId,
               file_type: file.type || "application/octet-stream",
               num_chunks: BigInt(totalChunks),
