@@ -5,7 +5,7 @@ use crate::with_state;
 use ic_cdk::update;
 use serde_bytes::ByteBuf;
 
-#[update]
+// Internal implementation, not exposed as canister method
 pub async fn vetkd_encrypted_key(
     encryption_public_key: Vec<u8>,
     file_id: Option<u64>,

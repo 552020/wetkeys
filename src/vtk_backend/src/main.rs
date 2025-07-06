@@ -207,6 +207,14 @@ fn get_user_stats() -> UserResponse {
 }
 
 // === VetKey Methods ===
-// These are already defined in the vetkd module and will be automatically exposed
+#[ic_cdk::query]
+async fn vetkd_public_key() -> Result<Vec<u8>, String> {
+    vtk_backend::vetkd::vetkd_public_key().await
+}
+
+#[ic_cdk::update]
+async fn vetkd_encrypted_key(encryption_public_key: Vec<u8>, file_id: Option<u64>) -> Result<Vec<u8>, String> {
+    vtk_backend::vetkd::vetkd_encrypted_key(encryption_public_key, file_id).await
+}
 
 fn main() {}

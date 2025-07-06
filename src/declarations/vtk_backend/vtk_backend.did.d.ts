@@ -102,6 +102,11 @@ export interface _SERVICE {
     [upload_file_continue_request],
     upload_file_response
   >,
+  'vetkd_encrypted_key' : ActorMethod<
+    [Uint8Array | number[], [] | [bigint]],
+    Uint8Array | number[]
+  >,
+  'vetkd_public_key' : ActorMethod<[], Uint8Array | number[]>,
   'whoami' : ActorMethod<[], Principal>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

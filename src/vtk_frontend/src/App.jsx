@@ -168,6 +168,7 @@ function App() {
 
                 {useVetKey ? (
                   <div>
+                    {console.log("Actor for VetKeyTest:", actor, Object.keys(actor))}
                     <VetKeyTest actor={actor} userPrincipal={userPrincipal} />
                     <div className="mt-6">
                       <EnhancedFileUpload actor={actor} userPrincipal={userPrincipal} />

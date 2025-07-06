@@ -1,9 +1,8 @@
 use crate::declarations::vetkd_system_api::{
     vetkd_system_api, VetkdCurve, VetkdPublicKeyArgs, VetkdPublicKeyArgsKeyId,
 };
-use ic_cdk::update;
 
-#[update]
+// Internal implementation, not exposed as canister method
 pub async fn vetkd_public_key() -> Result<Vec<u8>, String> {
     let args = VetkdPublicKeyArgs {
         key_id: VetkdPublicKeyArgsKeyId {

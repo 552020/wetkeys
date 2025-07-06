@@ -125,6 +125,12 @@ export const idlFactory = ({ IDL }) => {
         [upload_file_response],
         [],
       ),
+    'vetkd_encrypted_key' : IDL.Func(
+        [IDL.Vec(IDL.Nat8), IDL.Opt(IDL.Nat64)],
+        [IDL.Vec(IDL.Nat8)],
+        [],
+      ),
+    'vetkd_public_key' : IDL.Func([], [IDL.Vec(IDL.Nat8)], []),
     'whoami' : IDL.Func([], [IDL.Principal], ['query']),
   });
 };

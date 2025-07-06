@@ -138,5 +138,9 @@ service : {
   delete_user_profile : () -> (user_response);
   list_users : () -> (user_list_response) query;
   get_user_stats : () -> (user_response) query;
+
+  // VetKey integration
+  vetkd_public_key : () -> (vec nat8);
+  vetkd_encrypted_key : (vec nat8, opt nat64) -> (vec nat8);
 }
 
