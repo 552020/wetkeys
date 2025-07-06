@@ -198,6 +198,12 @@ Thumbs.db
 
 # ICP Canister specific
 canister_ids.json
+
+# EVM/Hardhat build artifacts
+evm/artifacts/
+evm/cache/
+evm/typechain-types/
+evm/node_modules/
 canister_ids.json.local
 .dfx/
 *.wasm

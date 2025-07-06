@@ -18,6 +18,7 @@ type file_metadata = record {
   file_id : file_id;
   file_name : text;
   file_status : file_status;
+  shared_with : vec user;
 };
 
 type file_status = variant {
@@ -62,10 +63,10 @@ type upload_file_continue_request = record {
 
 type upload_file_response = variant {
   Ok;
-  Err : upload_file_error;
+  Err : error_with_file_upload;
 };
 
-type upload_file_error = variant {
+type error_with_file_upload = variant {
   already_uploaded;
   not_requested;
 };
@@ -75,6 +76,44 @@ type download_file_response = variant {
   not_uploaded_file;
   permission_error;
   found_file : file_data;
+};
+
+// User management types
+type user_profile = record {
+  principal_id : principal;
+  username : text;
+  display_name : opt text;
+  email : opt text;
+  created_at : nat64;
+  last_login : nat64;
+  storage_used : nat64;
+  file_count : nat64;
+  is_active : bool;
+};
+
+type create_user_request = record {
+  username : text;
+  display_name : opt text;
+  email : opt text;
+};
+
+type update_user_request = record {
+  username : opt text;
+  display_name : opt text;
+  email : opt text;
+};
+
+type user_response = variant {
+  Ok : user_profile;
+  NotFound;
+  AlreadyExists;
+  InvalidInput;
+  NotAuthenticated;
+};
+
+type user_list_response = variant {
+  Ok : vec user_profile;
+  NotAuthenticated;
 };
 
 type delete_file_response = variant {
@@ -90,4 +129,18 @@ service : {
   greet : (name : text) -> (text) query;
   delete_file : (file_id : file_id) -> (delete_file_response);
   register_file : (register_file_request) -> (register_file_response);
+  whoami : () -> (principal) query;
+  
+  // User management endpoints
+  create_user_profile : (create_user_request) -> (user_response);
+  get_user_profile : () -> (user_response) query;
+  update_user_profile : (update_user_request) -> (user_response);
+  delete_user_profile : () -> (user_response);
+  list_users : () -> (user_list_response) query;
+  get_user_stats : () -> (user_response) query;
+
+  // VetKey integration
+  vetkd_public_key : () -> (vec nat8);
+  vetkd_encrypted_key : (vec nat8, opt nat64) -> (vec nat8);
 }
+

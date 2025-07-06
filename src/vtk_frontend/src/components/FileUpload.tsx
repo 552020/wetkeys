@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { vtk_backend } from "../../../declarations/vtk_backend";
+import { canisterId, createActor, vtk_backend } from "../../../declarations/vtk_backend";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
 import { WalrusClient } from "@mysten/walrus";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
@@ -15,12 +15,11 @@ const walrusClient = new WalrusClient({
   wasmUrl: walrusWasmUrl,
 });
 
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+const CHUNK_SIZE = 2 * 1024 * 1024;
 
 // Default Walrus publisher endpoint for API upload
 const DEFAULT_PUBLISHER_API = "https://publisher.walrus-testnet.walrus.space/v1/blobs";
-
-export default function FileUpload() {
+export default function FileUpload({ actor }: { actor: any }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,12 +69,12 @@ export default function FileUpload() {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const num_chunks = BigInt(totalChunks);
 
+        let backendFileId = null;
         for (let i = 0; i < totalChunks; i++) {
           const start = i * CHUNK_SIZE;
           const end = Math.min(start + CHUNK_SIZE, file.size);
           const chunk = file.slice(start, end);
           const buffer = await chunk.arrayBuffer();
-          const file_content = [...new Uint8Array(buffer)];
 
           if (i === 0) {
             // First chunk with metadata
@@ -86,15 +85,29 @@ export default function FileUpload() {
               num_chunks,
             };
             console.log("upload_file_atomic args:", uploadArgs);
-            await vtk_backend.upload_file_atomic(uploadArgs);
+            const uploadResult = await actor.upload_file_atomic(uploadArgs);
+
+            // Handle the new Result type from vetKey integration
+            let backendFileId;
+            if (uploadResult && typeof uploadResult === "object" && "ok" in uploadResult) {
+              backendFileId = uploadResult.ok;
+            } else if (uploadResult && typeof uploadResult === "object" && "err" in uploadResult) {
+              throw new Error(`Upload failed: ${uploadResult.err}`);
+            } else {
+              // Handle legacy response format
+              backendFileId = uploadResult;
+            }
           } else {
-            // Remaining chunks
-            const file_id = BigInt(fileIdCounter);
+            if (backendFileId == null) {
+              setError("No file ID from backend for chunk upload.");
+              setIsUploading(false);
+              return;
+            }
             await vtk_backend.upload_file_continue({
-              file_id,
-              file_content: new Uint8Array(buffer),
+              file_id: backendFileId,
               file_type: file.type || "application/octet-stream",
-              num_chunks,
+              num_chunks: BigInt(totalChunks),
+              file_content: new Uint8Array(buffer),
             });
           }
 
@@ -136,7 +149,7 @@ export default function FileUpload() {
           console.log("Uploaded to Walrus with blobId:", blobId);
           // Register in backend
           const now = BigInt(Date.now());
-          await vtk_backend.register_file({
+          await actor.register_file({
             file_name: file.name,
             storage_provider: "walrus",
             blob_id: [blobId],
@@ -167,7 +180,7 @@ export default function FileUpload() {
           if (!blobId) throw new Error("No blobId returned from Walrus API");
           // Register in backend
           const now = BigInt(Date.now());
-          await vtk_backend.register_file({
+          await actor.register_file({
             file_name: file.name,
             storage_provider: "walrus",
             blob_id: [blobId],

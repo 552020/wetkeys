@@ -1,8 +1,11 @@
 pub mod api;
+pub mod vetkeys;
+pub mod vetkd;
+pub mod declarations;
 mod memory;
 
 use candid::CandidType;
-// use candid::Principal;
+use candid::Principal;
 use ic_stable_structures::{
     // memory_manager::MemoryId,
     // storable::Storable, // Import Bound from storable submodule
@@ -33,12 +36,12 @@ pub struct FileInfo {
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct FileMetadata {
     pub file_name: String,
-    // pub user_public_key: Vec<u8>,
-    // pub requester_principal: Principal,
+    pub requester_principal: Principal,
     pub requested_at: u64,
     pub uploaded_at: Option<u64>,
     pub storage_provider: String, // "icp" or "walrus"
     pub blob_id: Option<String>,  // Only for Walrus files
+    pub is_encrypted: bool,       // VetKey encryption flag
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -62,7 +65,7 @@ pub struct PublicFileMetadata {
     pub group_name: String,
     pub group_alias: Option<String>,
     pub file_status: FileStatus,
-    // pub shared_with: Vec<PublicUser>,
+    pub shared_with: Vec<()>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,16 +83,12 @@ pub enum FileContent {
     Uploaded {
         num_chunks: u64,
         file_type: String,
-        // owner_key: Vec<u8>, // VetKD public key
-        // No need for shared_keys map as we are moving to vetkeys
-        // shared_keys: BTreeMap<Principal, Vec<u8>>,
+        vetkey_metadata: crate::vetkeys::EncryptedFileData,
     },
     PartiallyUploaded {
         num_chunks: u64,
         file_type: String,
-        // owner_key: Vec<u8>, // VetKD public key
-        // No need for shared_keys map as we are moving to vetkeys
-        // shared_keys: BTreeMap<Principal, Vec<u8>>,
+        vetkey_metadata: crate::vetkeys::EncryptedFileData,
     },
 }
 
@@ -119,6 +118,8 @@ pub enum UploadFileError {
     NotRequested,
     #[serde(rename = "already_uploaded")]
     AlreadyUploaded,
+    #[serde(rename = "not_authenticated")]
+    NotAuthenticated,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug, PartialEq)]
@@ -138,27 +139,24 @@ pub struct State {
     // and is used to assign IDs to newly requested files.
     file_count: u64,
 
-    // Keeps track of usernames vs. their principals.
-    // pub users: BTreeMap<Principal, User>,
-
     /// Mapping between file IDs and file information.
     pub file_data: BTreeMap<u64, File>,
 
-
     // Mapping between a user's principal and the list of files that are owned by the user.
-    // pub file_owners: BTreeMap<Principal, Vec<u64>>,
-
-    // Mapping between a user's principal and the list of files that are shared with them.
-    // pub file_shares: BTreeMap<Principal, Vec<u64>>,
+    pub file_owners: BTreeMap<Principal, Vec<u64>>,
 
     /// The contents of the file (stored in stable memory).
     #[serde(skip, default = "init_file_contents")]
     pub file_contents: StableBTreeMap<(FileId, ChunkId), Vec<u8>, Memory>,
 
+    // User management
+    pub user_profiles: BTreeMap<Principal, UserProfile>,
+    pub username_to_principal: BTreeMap<String, Principal>, // For username uniqueness
+    pub user_count: u64,
 }
 
 impl State {
-    pub(crate) fn generate_file_id(&mut self) -> u64 {
+    pub fn generate_file_id(&mut self) -> u64 {
 
         let file_id = self.file_count;
         self.file_count += 1;
@@ -168,9 +166,12 @@ impl State {
     fn new(_rand_seed: &[u8]) -> Self {
         Self {
             file_count: 0,
-            // users: BTreeMap::new(),
             file_data: BTreeMap::new(),
+            file_owners: BTreeMap::new(),
             file_contents: init_file_contents(),
+            user_profiles: BTreeMap::new(),
+            username_to_principal: BTreeMap::new(),
+            user_count: 0,
         }
     }
 
@@ -245,4 +246,52 @@ pub fn ceil_division(dividend: usize, divisor: usize) -> usize {
 
 fn init_file_contents() -> StableBTreeMap<(FileId, ChunkId), Vec<u8>, Memory> {
     StableBTreeMap::init(crate::memory::get_file_contents_memory())
+}
+
+#[ic_cdk::query]
+fn whoami() -> Principal {
+    ic_cdk::caller()
+}
+
+// User management types
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct UserProfile {
+    pub principal_id: Principal,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub email: Option<String>,
+    pub created_at: u64,
+    pub last_login: u64,
+    pub storage_used: u64, // in bytes
+    pub file_count: u64,
+    pub is_active: bool,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct CreateUserRequest {
+    pub username: String,
+    pub display_name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct UpdateUserRequest {
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum UserResponse {
+    Ok(UserProfile),
+    NotFound,
+    AlreadyExists,
+    InvalidInput,
+    NotAuthenticated,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum UserListResponse {
+    Ok(Vec<UserProfile>),
+    NotAuthenticated,
 }

@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { downloadFile, deleteFile } from "../services/fileService";
-import { vtk_backend } from "../../../declarations/vtk_backend";
 
 // FileList component: lists files from the backend
-export default function FileList() {
+export default function FileList({ actor }: { actor: any }) {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,10 +10,12 @@ export default function FileList() {
 
   useEffect(() => {
     async function fetchFiles() {
+      if (!actor) return;
+      
       setLoading(true);
       setError(null);
       try {
-        const result = await vtk_backend.list_files();
+        const result = await actor.list_files();
         setFiles(result);
       } catch (err) {
         setError((err as Error).message || "Failed to fetch files");
@@ -23,13 +24,13 @@ export default function FileList() {
       }
     }
     fetchFiles();
-  }, []);
+  }, [actor]);
 
   const handleDownload = async (file: any) => {
     const fileId = file.file_id.toString();
     setActionLoading((prev) => ({ ...prev, [`download-${fileId}`]: true }));
     try {
-      await downloadFile(file);
+      await downloadFile(file, actor);
     } catch (err) {
       console.error("Download failed:", err);
       alert(`Download failed: ${(err as Error).message}`);
@@ -46,9 +47,9 @@ export default function FileList() {
     const fileId = file.file_id.toString();
     setActionLoading((prev) => ({ ...prev, [`delete-${fileId}`]: true }));
     try {
-      await deleteFile(file);
+      await deleteFile(file, actor);
       // Refresh the file list after successful deletion
-      const result = await vtk_backend.list_files();
+      const result = await actor.list_files();
       setFiles(result);
     } catch (err) {
       console.error("Delete failed:", err);
