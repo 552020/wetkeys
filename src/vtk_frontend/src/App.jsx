@@ -6,25 +6,20 @@ import EnhancedFileList from "./components/EnhancedFileList";
 import VetKeyTest from "./components/VetKeyTest";
 import UserProfile from "./components/UserProfile";
 import UserList from "./components/UserList";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import Navigation from "./components/Navigation";
+import PaymentForm from "./components/PaymentForm";
 import { vtk_backend as defaultActor } from "declarations/vtk_backend";
 import { createActor, canisterId } from "declarations/vtk_backend";
 import { AuthClient } from "@dfinity/auth-client";
-import { Principal } from "@dfinity/principal";
-import { Button } from "@/components/ui/button";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
-import USDCReceiverABI from "./abi/USDCReceiver.json";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { UserService } from "./services/userService";
 
-const USDC_RECEIVER_ADDRESS = "0xc6e28A99A04407BA45EdfA7E75dcE5E558eA845F"; // Deployed address
 const identityProvider =
   process.env.DFX_NETWORK === "ic" ? "https://identity.ic0.app" : "http://uxrrr-q7777-77774-qaaaq-cai.localhost:4943/";
 
 function App() {
   const [greeting, setGreeting] = useState("");
-  const [fileId, setFileId] = useState("");
-  const [amount, setAmount] = useState("");
   const [actor, setActor] = useState(defaultActor);
   const [authClient, setAuthClient] = useState(null);
   const [principal, setPrincipal] = useState("");
@@ -33,15 +28,6 @@ function App() {
   const [userPrincipal, setUserPrincipal] = useState(null);
   const [currentView, setCurrentView] = useState("files"); // "files", "profile", "users"
   const [useVetKey, setUseVetKey] = useState(true); // Toggle between regular and VetKey components
-
-  // Wallet connection status
-  const { address, isConnected } = useAccount();
-
-  // Contract write
-  const { writeContract, isPending, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
 
   useEffect(() => {
     AuthClient.create().then(async (client) => {
@@ -96,73 +82,18 @@ function App() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <img src="/logo2.svg" alt="DFINITY logo" className="h-12 w-auto" />
-            <h1 className="ml-4 text-2xl font-bold text-gray-900">VTK File Manager</h1>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <Header isAuthenticated={isAuthenticated} onLogin={login} onLogout={logout} />
 
-          {/* Authentication Controls */}
-          <div className="flex items-center space-x-4">
-            {!isAuthenticated ? <Button onClick={login}>Login</Button> : <Button onClick={logout}>Logout</Button>}
-            <Button onClick={whoami} variant="outline">
-              Whoami
-            </Button>
-          </div>
-        </div>
-
-        {/* Principal Display */}
-        {principal && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h2 className="text-sm font-medium text-blue-800">Your Principal ID:</h2>
-            <p className="text-blue-900 font-mono text-sm">{principal}</p>
-          </div>
-        )}
-
-        {/* Navigation Tabs */}
-        {isAuthenticated && (
-          <div className="mb-8">
-            <nav className="flex space-x-8 border-b border-gray-200">
-              <button
-                onClick={() => setCurrentView("files")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  currentView === "files"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Files
-              </button>
-              <button
-                onClick={() => setCurrentView("profile")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  currentView === "profile"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => setCurrentView("users")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  currentView === "users"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Users
-              </button>
-            </nav>
-          </div>
-        )}
-
-        {/* Main Content */}
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto px-4 py-8">
         {isAuthenticated ? (
           <div>
+            {/* Navigation */}
+            <Navigation currentView={currentView} setCurrentView={setCurrentView} />
+
+            {/* Content based on current view */}
             {currentView === "files" && (
               <div>
                 {/* VetKey Toggle */}
@@ -176,9 +107,12 @@ function App() {
                           : "Files are stored without encryption"}
                       </p>
                     </div>
-                    <Button onClick={() => setUseVetKey(!useVetKey)} variant="outline" size="sm">
+                    <button
+                      onClick={() => setUseVetKey(!useVetKey)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
+                    >
                       {useVetKey ? "Use Regular Upload" : "Use VetKey Encryption"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -200,44 +134,9 @@ function App() {
                   </div>
                 )}
 
-                {/* RainbowKit Connect Button */}
+                {/* Payment Form */}
                 <div className="mt-8">
-                  <ConnectButton />
-                </div>
-
-                {/* Pay for File UI */}
-                <div className="mt-8 border rounded p-4 flex flex-col gap-3 bg-gray-50">
-                  <h3 className="text-lg font-semibold mb-2">Pay for File (USDCReceiver)</h3>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      placeholder="File ID"
-                      value={fileId}
-                      onChange={(e) => setFileId(e.target.value)}
-                      className="border rounded px-2 py-1 flex-1"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Amount (USDC)"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="border rounded px-2 py-1 w-32"
-                    />
-                    <Button
-                      disabled={!fileId || !amount || !isConnected || isPending}
-                      onClick={() =>
-                        writeContract({
-                          address: USDC_RECEIVER_ADDRESS,
-                          abi: USDCReceiverABI,
-                          functionName: "payForFile",
-                          args: [fileId, parseUnits(amount, 6)],
-                        })
-                      }
-                    >
-                      {isPending ? "Paying..." : "Pay for File"}
-                    </Button>
-                  </div>
-                  {isSuccess && <div className="text-green-600 font-medium">✅ Payment sent!</div>}
+                  <PaymentForm />
                 </div>
               </div>
             )}
@@ -255,11 +154,14 @@ function App() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Welcome to VTK File Manager</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Welcome to Wetkey</h2>
             <p className="text-gray-600 mb-8">Please login to access your files and manage your profile.</p>
-            <Button onClick={login} size="lg">
+            <button
+              onClick={login}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
               Login with Internet Identity
-            </Button>
+            </button>
           </div>
         )}
 
@@ -275,8 +177,11 @@ function App() {
             <section id="greeting">{greeting}</section>
           </div>
         </details>
-      </div>
-    </main>
+      </main>
+
+      {/* Footer */}
+      <Footer onWhoami={whoami} principal={principal} />
+    </div>
   );
 }
 
