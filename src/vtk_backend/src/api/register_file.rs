@@ -27,6 +27,7 @@ pub fn register_file(caller: Principal, req: RegisterFileRequest) -> RegisterFil
             uploaded_at: req.uploaded_at,
             storage_provider: req.storage_provider,
             blob_id: req.blob_id,
+            is_encrypted: false, // Not encrypted yet, will be encrypted on upload
         };
         // Insert into file_data with empty content for now
         state.file_data.insert(file_id, crate::File {

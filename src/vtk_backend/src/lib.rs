@@ -1,5 +1,7 @@
 pub mod api;
 pub mod vetkeys;
+pub mod vetkd;
+pub mod declarations;
 mod memory;
 
 use candid::CandidType;
@@ -39,6 +41,7 @@ pub struct FileMetadata {
     pub uploaded_at: Option<u64>,
     pub storage_provider: String, // "icp" or "walrus"
     pub blob_id: Option<String>,  // Only for Walrus files
+    pub is_encrypted: bool,       // VetKey encryption flag
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

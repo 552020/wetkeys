@@ -119,6 +119,7 @@ pub async fn upload_file_atomic(
                 uploaded_at: Some(crate::get_time()),
                 storage_provider: "icp".to_string(),
                 blob_id: None,
+                is_encrypted: true,
             },
             content,
         },

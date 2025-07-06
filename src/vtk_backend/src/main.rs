@@ -6,6 +6,7 @@ use vtk_backend::api::DeleteFileResult;
 use candid::Principal;
 use vtk_backend::api::{RegisterFileRequest, RegisterFileResponse};
 use vtk_backend::{CreateUserRequest, UpdateUserRequest, UserResponse, UserListResponse};
+// VetKey methods are already defined in the vetkd module
 
 #[update]
 fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, String> {
@@ -51,6 +52,7 @@ fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, String> {
                     uploaded_at: Some(crate::get_time()),
                     storage_provider: "icp".to_string(),
                     blob_id: None,
+                    is_encrypted: true, // Mark as VetKey encrypted
                 },
                 content,
             },
@@ -203,5 +205,8 @@ fn get_user_stats() -> UserResponse {
     let caller = ic_cdk::caller();
     with_state(|s| vtk_backend::api::get_user_stats(caller, s))
 }
+
+// === VetKey Methods ===
+// These are already defined in the vetkd module and will be automatically exposed
 
 fn main() {}
