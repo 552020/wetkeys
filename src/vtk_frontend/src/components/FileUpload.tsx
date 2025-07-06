@@ -21,7 +21,6 @@ const CHUNK_SIZE = 2 * 1024 * 1024;
 // Default Walrus publisher endpoint for API upload
 const DEFAULT_PUBLISHER_API = "https://publisher.walrus-testnet.walrus.space/v1/blobs";
 export default function FileUpload({ actor }: { actor: any }) {
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,16 +83,17 @@ export default function FileUpload({ actor }: { actor: any }) {
             };
             console.log("upload_file_atomic args:", uploadArgs);
             const uploadResult = await actor.upload_file_atomic(uploadArgs);
-            
-            // Handle the new Result type from vetKey integration
-            let backendFileId;
-            if (uploadResult && typeof uploadResult === 'object' && 'ok' in uploadResult) {
-              backendFileId = uploadResult.ok;
-            } else if (uploadResult && typeof uploadResult === 'object' && 'err' in uploadResult) {
-              throw new Error(`Upload failed: ${uploadResult.err}`);
+
+            // Handle the Result type from backend (Ok(file_id) or Err(error))
+            let backendFileId: bigint;
+            const result = uploadResult as any;
+            if (result && typeof result === "object" && "Ok" in result) {
+              backendFileId = result.Ok as bigint;
+            } else if (result && typeof result === "object" && "Err" in result) {
+              throw new Error(`Upload failed: ${result.Err}`);
             } else {
-              // Handle legacy response format
-              backendFileId = uploadResult;
+              // Handle legacy response format (direct file_id)
+              backendFileId = result as bigint;
             }
           } else {
             if (backendFileId == null) {
@@ -101,12 +101,18 @@ export default function FileUpload({ actor }: { actor: any }) {
               setIsUploading(false);
               return;
             }
-            await vtk_backend.upload_file_continue({
+            const continueResult = await vtk_backend.upload_file_continue({
               file_id: backendFileId,
               file_type: file.type || "application/octet-stream",
               num_chunks: BigInt(totalChunks),
               file_content: new Uint8Array(buffer),
             });
+
+            // Handle the Result type from backend (Ok(()) or Err(error))
+            const result = continueResult as any;
+            if (result && typeof result === "object" && "Err" in result) {
+              throw new Error(`Continue upload failed: ${result.Err}`);
+            }
           }
 
           setProgress(Math.round(((i + 1) / totalChunks) * 100));

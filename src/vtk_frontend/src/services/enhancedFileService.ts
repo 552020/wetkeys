@@ -61,7 +61,19 @@ export class EnhancedFileService {
       };
 
       console.log("Uploading encrypted file to backend...");
-      const fileId = await this.actor.upload_file_atomic(uploadRequest);
+      const uploadResult = await this.actor.upload_file_atomic(uploadRequest);
+
+      // Handle the Result type from backend (Ok(file_id) or Err(error))
+      let fileId: bigint;
+      const result = uploadResult as any;
+      if (result && typeof result === "object" && "Ok" in result) {
+        fileId = result.Ok as bigint;
+      } else if (result && typeof result === "object" && "Err" in result) {
+        throw new Error(`Upload failed: ${result.Err}`);
+      } else {
+        // Handle legacy response format (direct file_id)
+        fileId = result as bigint;
+      }
 
       console.log("File uploaded successfully with VetKey encryption:", fileId);
       return fileId;
@@ -85,19 +97,20 @@ export class EnhancedFileService {
         console.log("Downloading encrypted file from backend...");
         const response = await this.actor.download_file(file.file_id, BigInt(0));
 
-        if (response && typeof response === "object" && "ok" in response) {
-          const result = response.ok;
-          if ("found_file" in result && result.found_file) {
-            await this.processDownloadedFile(result.found_file, file);
+        const result = response as any;
+        if (result && typeof result === "object" && "Ok" in result) {
+          const okResult = result.Ok;
+          if ("found_file" in okResult && okResult.found_file) {
+            await this.processDownloadedFile(okResult.found_file, file);
           } else {
             throw new Error("File not found or download failed");
           }
-        } else if (response && typeof response === "object" && "err" in response) {
-          throw new Error(`Download failed: ${response.err}`);
+        } else if (result && typeof result === "object" && "Err" in result) {
+          throw new Error(`Download failed: ${result.Err}`);
         } else {
           // Handle legacy response format
-          if ("found_file" in response && response.found_file) {
-            await this.processDownloadedFile(response.found_file, file);
+          if ("found_file" in result && result.found_file) {
+            await this.processDownloadedFile(result.found_file, file);
           } else {
             throw new Error("File not found or download failed");
           }

@@ -23,12 +23,13 @@ export async function downloadFile(file: FileMetadata, actor?: any) {
     if (!actor) throw new Error("Actor is required for ICP file operations");
     // Assume chunk_id = 0 for now (single chunk)
     const response = await actor.download_file(file.file_id, BigInt(0));
-    
-    // Handle the new Result type from vetKey integration
-    if (response && typeof response === 'object' && 'ok' in response) {
-      const result = response.ok;
-      if ("found_file" in result && result.found_file) {
-        const fileData = result.found_file;
+
+    // Handle the Result type from backend (Ok(result) or Err(error))
+    const result = response as any;
+    if (result && typeof result === "object" && "Ok" in result) {
+      const okResult = result.Ok;
+      if ("found_file" in okResult && okResult.found_file) {
+        const fileData = okResult.found_file;
         if (fileData.contents && fileData.contents.length > 0) {
           let uint8Content: Uint8Array;
           if (fileData.contents instanceof Uint8Array) {
@@ -44,12 +45,12 @@ export async function downloadFile(file: FileMetadata, actor?: any) {
       } else {
         throw new Error("ICP file download failed");
       }
-    } else if (response && typeof response === 'object' && 'err' in response) {
-      throw new Error(`Download failed: ${response.err}`);
+    } else if (result && typeof result === "object" && "Err" in result) {
+      throw new Error(`Download failed: ${result.Err}`);
     } else {
       // Handle legacy response format
-      if ("found_file" in response && response.found_file) {
-        const fileData = response.found_file;
+      if ("found_file" in result && result.found_file) {
+        const fileData = result.found_file;
         if (fileData.contents && fileData.contents.length > 0) {
           let uint8Content: Uint8Array;
           if (fileData.contents instanceof Uint8Array) {
