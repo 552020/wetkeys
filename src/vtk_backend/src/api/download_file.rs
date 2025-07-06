@@ -26,7 +26,7 @@ pub async fn download_file(s: &State, caller: Principal, file_id: u64, chunk_id:
         Some(file) => match &file.content {
             FileContent::Uploaded { file_type, num_chunks, vetkey_metadata } => {
                 match s.file_contents.get(&(file_id, chunk_id)) {
-                    Some(encrypted_contents) => {
+                    Some(_encrypted_contents) => {
                         // Decrypt the content using vetKeys
                         let decrypted_contents = VetKeyService::decrypt_file_for_user(
                             vetkey_metadata,

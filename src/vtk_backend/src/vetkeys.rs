@@ -41,7 +41,7 @@ pub struct VetKeyInfo {
     pub encryption_key: Vec<u8>,
 }
 
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct EncryptedFileData {
     pub encrypted_content: Vec<u8>,
     pub file_owners: Vec<Principal>,
@@ -59,7 +59,7 @@ impl VetKeyService {
             key_id: VetkdSystemKeyId::Bls12381G1,
         };
 
-        let response: VetkdPublicKeyResponse = call_with_payment(
+        let response: (VetkdPublicKeyResponse,) = call_with_payment(
             Principal::management_canister(),
             "vetkd_public_key",
             (request,),
@@ -68,7 +68,7 @@ impl VetKeyService {
         .await
         .map_err(|e| format!("Failed to get public key: {:?}", e))?;
 
-        Ok(response.public_key)
+        Ok(response.0.public_key)
     }
 
     /// Derive an encryption key for a specific file and user
@@ -83,7 +83,7 @@ impl VetKeyService {
             derivation_id: format!("file_{}", file_id).into_bytes(),
         };
 
-        let response: VetkdDeriveKeyResponse = call_with_payment(
+        let response: (VetkdDeriveKeyResponse,) = call_with_payment(
             Principal::management_canister(),
             "vetkd_derive_key",
             (request,),
@@ -92,7 +92,7 @@ impl VetKeyService {
         .await
         .map_err(|e| format!("Failed to derive key: {:?}", e))?;
 
-        Ok(response.derived_key)
+        Ok(response.0.derived_key)
     }
 
     /// Encrypt file content for multiple owners
@@ -102,7 +102,7 @@ impl VetKeyService {
         owners: Vec<Principal>,
     ) -> Result<EncryptedFileData, String> {
         let mut encryption_metadata = HashMap::new();
-        let mut encrypted_content = file_content;
+        let encrypted_content = file_content;
 
         // Encrypt for each owner
         for owner in &owners {
