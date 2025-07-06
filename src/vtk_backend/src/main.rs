@@ -8,9 +8,61 @@ use vtk_backend::api::{RegisterFileRequest, RegisterFileResponse};
 use vtk_backend::{CreateUserRequest, UpdateUserRequest, UserResponse, UserListResponse};
 
 #[update]
-async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, String> {
+fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, String> {
     let caller = ic_cdk::caller();
-    vtk_backend::api::upload_file_atomic(caller, request, &mut with_state_mut(|s| s)).await
+    with_state_mut(|s| {
+        // For now, we'll use a simplified version without vetKey encryption
+        // TODO: Implement proper async vetKey integration
+        if caller == Principal::anonymous() {
+            return Err("Not authenticated".to_string());
+        }
+
+        let file_id = s.generate_file_id();
+        
+        // Create a simple encrypted data structure for now
+        let encrypted_data = crate::vetkeys::EncryptedFileData {
+            encrypted_content: request.content.clone(),
+            file_owners: vec![caller],
+            encryption_metadata: std::collections::HashMap::new(),
+        };
+        
+        let content = if request.num_chunks == 1 {
+            crate::FileContent::Uploaded {
+                num_chunks: request.num_chunks,
+                file_type: request.file_type.clone(),
+                vetkey_metadata: encrypted_data,
+            }
+        } else {
+            crate::FileContent::PartiallyUploaded {
+                num_chunks: request.num_chunks,
+                file_type: request.file_type.clone(),
+                vetkey_metadata: encrypted_data,
+            }
+        };
+        
+        s.file_contents.insert((file_id, 0), request.content.clone());
+        s.file_data.insert(
+            file_id,
+            crate::File {
+                metadata: crate::FileMetadata {
+                    file_name: request.name,
+                    requester_principal: caller,
+                    requested_at: crate::get_time(),
+                    uploaded_at: Some(crate::get_time()),
+                    storage_provider: "icp".to_string(),
+                    blob_id: None,
+                },
+                content,
+            },
+        );
+
+        s.file_owners
+            .entry(caller)
+            .or_insert_with(Vec::new)
+            .push(file_id);
+
+        Ok(file_id)
+    })
 }
 
 #[update]
@@ -26,9 +78,41 @@ fn register_file(request: RegisterFileRequest) -> RegisterFileResponse {
 }
 
 #[query]
-async fn download_file(file_id: u64, chunk_id: u64) -> Result<FileDownloadResponse, String> {
+fn download_file(file_id: u64, chunk_id: u64) -> Result<FileDownloadResponse, String> {
     let caller = ic_cdk::caller();
-    vtk_backend::api::download_file(&with_state(|s| s), caller, file_id, chunk_id).await
+    with_state(|s| {
+        // For now, we'll use a simplified version without vetKey decryption
+        // TODO: Implement proper async vetKey integration
+        if caller == Principal::anonymous() {
+            return Ok(FileDownloadResponse::PermissionError);
+        }
+
+        match s.file_owners.get(&caller) {
+            Some(files) => {
+                if !files.contains(&file_id) {
+                    return Ok(FileDownloadResponse::PermissionError);
+                }
+            }
+            None => return Ok(FileDownloadResponse::PermissionError),
+        }
+
+        match s.file_data.get(&file_id) {
+            None => Ok(FileDownloadResponse::NotFoundFile),
+            Some(file) => match &file.content {
+                crate::FileContent::Uploaded { file_type, num_chunks, vetkey_metadata: _ } => {
+                    match s.file_contents.get(&(file_id, chunk_id)) {
+                        Some(contents) => Ok(FileDownloadResponse::FoundFile(crate::FileData {
+                            contents: contents.clone(),
+                            file_type: file_type.clone(),
+                            num_chunks: *num_chunks,
+                        })),
+                        None => Ok(FileDownloadResponse::NotFoundFile),
+                    }
+                }
+                _ => Ok(FileDownloadResponse::NotUploadedFile),
+            },
+        }
+    })
 }
 
 #[update]

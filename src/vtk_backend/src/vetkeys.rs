@@ -52,7 +52,7 @@ pub struct VetKeyService;
 
 impl VetKeyService {
     /// Get the vetKey public key for a user
-    pub async fn get_public_key(user_principal: Principal) -> Result<Vec<u8>, String> {
+    pub async fn get_public_key(_user_principal: Principal) -> Result<Vec<u8>, String> {
         let request = VetkdPublicKeyRequest {
             canister_id: None,
             derivation_path: vec![b"vtk_file_encryption".to_vec()],
