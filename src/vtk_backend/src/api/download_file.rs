@@ -1,9 +1,7 @@
 // pub use crate::ceil_division;
-use crate::{FileContent, FileData, FileDownloadResponse, State, vetkeys::VetKeyService};
+use crate::{FileContent, FileData, FileDownloadResponse, State, vetkeys::VetKeyService, vetkeys::EncryptedFileData};
 use candid::Principal;
-// use ic_cdk::export::candid::Principal;
-// use candid::Principal;
-// use ic_cdk::println;
+use std::collections::HashMap;
 
 pub async fn download_file(s: &State, caller: Principal, file_id: u64, chunk_id: u64) -> Result<FileDownloadResponse, String> {
     // Check if caller is authenticated (not anonymous)
@@ -141,8 +139,8 @@ mod test {
     use super::*;
     use crate::{File, FileContent, FileData, FileMetadata, State};
 
-    #[test]
-    fn download_existing_uploaded_file() {
+    #[tokio::test]
+    async fn download_existing_uploaded_file() {
         let mut state = State::default();
         let test_principal = Principal::from_text("2vxsx-fae").unwrap();
         
@@ -156,11 +154,16 @@ mod test {
                     uploaded_at: Some(12345),
                     storage_provider: "icp".to_string(),
                     blob_id: None,
+                    is_encrypted: true,
                 },
                 content: FileContent::Uploaded {
                     num_chunks: 1,
                     file_type: "txt".to_string(),
-                    owner_key: vec![1, 2, 3], // Test owner key
+                    vetkey_metadata: EncryptedFileData {
+                        encrypted_content: vec![1, 2, 3],
+                        file_owners: vec![test_principal],
+                        encryption_metadata: HashMap::new(),
+                    },
                 },
             },
         );
@@ -169,7 +172,7 @@ mod test {
         // Add file to user's owned files
         state.file_owners.insert(test_principal, vec![0]);
 
-        let result = download_file(&state, test_principal, 0, 0);
+        let result = download_file(&state, test_principal, 0, 0).await.unwrap();
         assert_eq!(
             result,
             FileDownloadResponse::FoundFile(FileData {
@@ -180,16 +183,16 @@ mod test {
         );
     }
 
-    #[test]
-    fn download_nonexistent_file() {
+    #[tokio::test]
+    async fn download_nonexistent_file() {
         let state = State::default();
         let test_principal = Principal::from_text("2vxsx-fae").unwrap();
-        let result = download_file(&state, test_principal, 42, 0);
+        let result = download_file(&state, test_principal, 42, 0).await.unwrap();
         assert_eq!(result, FileDownloadResponse::NotFoundFile);
     }
 
-    #[test]
-    fn download_not_uploaded_file() {
+    #[tokio::test]
+    async fn download_not_uploaded_file() {
         let mut state = State::default();
         let test_principal = Principal::from_text("2vxsx-fae").unwrap();
         
@@ -203,6 +206,7 @@ mod test {
                     uploaded_at: None,
                     storage_provider: "icp".to_string(),
                     blob_id: None,
+                    is_encrypted: false,
                 },
                 content: FileContent::Pending { alias: "abc".to_string() },
             },
@@ -211,19 +215,19 @@ mod test {
         // Add file to user's owned files
         state.file_owners.insert(test_principal, vec![0]);
         
-        let result = download_file(&state, test_principal, 0, 0);
+        let result = download_file(&state, test_principal, 0, 0).await.unwrap();
         assert_eq!(result, FileDownloadResponse::NotUploadedFile);
     }
 
-    #[test]
-    fn anonymous_user_cannot_download() {
+    #[tokio::test]
+    async fn anonymous_user_cannot_download() {
         let state = State::default();
-        let result = download_file(&state, Principal::anonymous(), 0, 0);
+        let result = download_file(&state, Principal::anonymous(), 0, 0).await.unwrap();
         assert_eq!(result, FileDownloadResponse::PermissionError);
     }
 
-    #[test]
-    fn wrong_user_cannot_download() {
+    #[tokio::test]
+    async fn wrong_user_cannot_download() {
         let mut state = State::default();
         let test_principal1 = Principal::from_text("2vxsx-fae").unwrap();
         let test_principal2 = Principal::from_text("3vxsx-fae").unwrap();
@@ -238,11 +242,16 @@ mod test {
                     uploaded_at: Some(12345),
                     storage_provider: "icp".to_string(),
                     blob_id: None,
+                    is_encrypted: true,
                 },
                 content: FileContent::Uploaded {
                     num_chunks: 1,
                     file_type: "txt".to_string(),
-                    owner_key: vec![1, 2, 3],
+                    vetkey_metadata: EncryptedFileData {
+                        encrypted_content: vec![1, 2, 3],
+                        file_owners: vec![test_principal1],
+                        encryption_metadata: HashMap::new(),
+                    },
                 },
             },
         );
@@ -252,7 +261,7 @@ mod test {
         state.file_owners.insert(test_principal1, vec![0]);
         
         // Try to download as principal2
-        let result = download_file(&state, test_principal2, 0, 0);
+        let result = download_file(&state, test_principal2, 0, 0).await.unwrap();
         assert_eq!(result, FileDownloadResponse::PermissionError);
     }
 }

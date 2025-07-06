@@ -207,12 +207,7 @@ fn get_user_stats() -> UserResponse {
 }
 
 // === VetKey Methods ===
-#[ic_cdk::update]
-async fn vetkd_public_key() -> Result<Vec<u8>, String> {
-    // Force update context
-    ic_cdk::println!("Forcing update context");
-    vtk_backend::vetkd::vetkd_public_key().await
-}
+// Note: vetkd_public_key is already defined in the vetkd module
 
 #[ic_cdk::update]
 async fn vetkd_encrypted_key(encryption_public_key: Vec<u8>, file_id: Option<u64>) -> Result<Vec<u8>, String> {

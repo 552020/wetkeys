@@ -1,4 +1,4 @@
-use crate::{FileContent, State};
+use crate::{FileContent, State, vetkeys::EncryptedFileData};
 use candid::{CandidType, Principal};
 use serde::{Serialize, Deserialize};
 
@@ -52,6 +52,7 @@ pub fn delete_file(state: &mut State, caller: Principal, file_id: u64) -> Delete
 mod test {
     use super::*;
     use crate::{File, FileContent, FileMetadata, State};
+    use std::collections::HashMap;
 
     #[test]
     fn delete_existing_file() {
@@ -67,10 +68,18 @@ mod test {
                     requester_principal: test_principal,
                     requested_at: 12345,
                     uploaded_at: Some(12345),
+                    storage_provider: "icp".to_string(),
+                    blob_id: None,
+                    is_encrypted: true,
                 },
                 content: FileContent::Uploaded {
                     num_chunks: 1,
                     file_type: "txt".to_string(),
+                    vetkey_metadata: EncryptedFileData {
+                        encrypted_content: vec![1, 2, 3],
+                        file_owners: vec![test_principal],
+                        encryption_metadata: HashMap::new(),
+                    },
                 },
             },
         );
@@ -128,10 +137,18 @@ mod test {
                     requester_principal: test_principal1,
                     requested_at: 12345,
                     uploaded_at: Some(12345),
+                    storage_provider: "icp".to_string(),
+                    blob_id: None,
+                    is_encrypted: true,
                 },
                 content: FileContent::Uploaded {
                     num_chunks: 1,
                     file_type: "txt".to_string(),
+                    vetkey_metadata: EncryptedFileData {
+                        encrypted_content: vec![1, 2, 3],
+                        file_owners: vec![test_principal1],
+                        encryption_metadata: HashMap::new(),
+                    },
                 },
             },
         );

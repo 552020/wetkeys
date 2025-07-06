@@ -1,9 +1,19 @@
 use crate::declarations::vetkd_system_api::{
-    vetkd_system_api, VetkdCurve, VetkdPublicKeyArgs, VetkdPublicKeyArgsKeyId,
+    VETKD_SYSTEM_API, VetkdCurve, VetkdPublicKeyArgs, VetkdPublicKeyArgsKeyId,
 };
+use ic_cdk::update;
+use candid::{CandidType, Deserialize};
 
-// Internal implementation, not exposed as canister method
-pub async fn vetkd_public_key() -> Result<Vec<u8>, String> {
+#[derive(CandidType, Deserialize)]
+pub enum VetkdPublicKeyResponse {
+    Ok(Vec<u8>),
+    Err(String),
+}
+
+#[update]
+pub async fn vetkd_public_key() -> VetkdPublicKeyResponse {
+    ic_cdk::println!("vetkd_public_key called");
+
     let args = VetkdPublicKeyArgs {
         key_id: VetkdPublicKeyArgsKeyId {
             name: "insecure_test_key_1".to_string(),
@@ -13,10 +23,14 @@ pub async fn vetkd_public_key() -> Result<Vec<u8>, String> {
         canister_id: None,
     };
 
-    let (result,) = vetkd_system_api
-        .vetkd_public_key(args)
-        .await
-        .map_err(|_| "Failed to retrieve public key from VetKey System API".to_string())?;
-
-    Ok(result.public_key.to_vec())
+    match VETKD_SYSTEM_API.vetkd_public_key(args).await {
+        Ok((result,)) => {
+            ic_cdk::println!("Returning public key: {:?}", result.public_key);
+            VetkdPublicKeyResponse::Ok(result.public_key.to_vec())
+        }
+        Err(e) => {
+            ic_cdk::println!("VetKD call failed: {:?}", e);
+            VetkdPublicKeyResponse::Err(format!("VetKD call failed: {:?}", e))
+        }
+    }
 } 

@@ -2,6 +2,8 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
+export type VetkdPublicKeyResponse = { 'Ok' : Uint8Array | number[] } |
+  { 'Err' : string };
 export interface create_user_request {
   'username' : string,
   'email' : [] | [string],
@@ -106,7 +108,7 @@ export interface _SERVICE {
     [Uint8Array | number[], [] | [bigint]],
     Uint8Array | number[]
   >,
-  'vetkd_public_key' : ActorMethod<[], Uint8Array | number[]>,
+  'vetkd_public_key' : ActorMethod<[], VetkdPublicKeyResponse>,
   'whoami' : ActorMethod<[], Principal>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

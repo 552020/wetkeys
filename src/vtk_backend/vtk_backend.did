@@ -121,6 +121,12 @@ type delete_file_response = variant {
      NotFound;
    };
 
+// VetKey integration
+type VetkdPublicKeyResponse = variant {
+  Ok : blob;
+  Err : text;
+};
+
 service : {
   upload_file_atomic : (upload_file_atomic_request) -> (file_id);
   upload_file_continue : (upload_file_continue_request) -> (upload_file_response);
@@ -140,7 +146,7 @@ service : {
   get_user_stats : () -> (user_response) query;
 
   // VetKey integration
-  vetkd_public_key : () -> (vec nat8);
+  vetkd_public_key : () -> (VetkdPublicKeyResponse);
   vetkd_encrypted_key : (vec nat8, opt nat64) -> (vec nat8);
 }
 

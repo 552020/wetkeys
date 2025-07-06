@@ -1,8 +1,7 @@
 use crate::declarations::vetkd_system_api::{
-    vetkd_system_api, VetkdCurve, VetkdDeriveEncryptedKeyArgs, VetkdDeriveEncryptedKeyArgsKeyId,
+    VETKD_SYSTEM_API, VetkdCurve, VetkdDeriveEncryptedKeyArgs, VetkdDeriveEncryptedKeyArgsKeyId,
 };
 use crate::with_state;
-use ic_cdk::update;
 use serde_bytes::ByteBuf;
 
 // Internal implementation, not exposed as canister method
@@ -37,7 +36,7 @@ pub async fn vetkd_encrypted_key(
         encryption_public_key: ByteBuf::from(encryption_public_key),
     };
 
-    let (result,) = vetkd_system_api
+    let (result,) = VETKD_SYSTEM_API
         .vetkd_derive_encrypted_key(args)
         .await
         .map_err(|_| "Failed to derive encrypted key from VetKey System API".to_string())?;

@@ -22,7 +22,7 @@ impl VetkdSystemApi {
 }
 
 // Public instance of VetKey System API
-pub const vetkd_system_api: VetkdSystemApi = VetkdSystemApi(CANISTER_ID);
+pub const VETKD_SYSTEM_API: VetkdSystemApi = VetkdSystemApi(CANISTER_ID);
 
 // VetKey Public Key Types
 #[derive(Debug, CandidType, Deserialize)]

@@ -26,10 +26,12 @@ export default function VetKeyTest({ actor, userPrincipal }: VetKeyTestProps) {
 
       // Test 1: Get public key
       setTestResult("🔄 Step 1: Getting public key...");
+      console.log("here");
       const publicKeyResponse = await actor.vetkd_public_key();
-      if (!publicKeyResponse || "Err" in publicKeyResponse) {
-        throw new Error("Failed to get public key");
-      }
+      console.log("[VetkdCryptoService.encrypt] Step 1: publicKeyResponse", publicKeyResponse);
+      // Accept both Uint8Array and array of numbers
+      const publicKey = publicKeyResponse instanceof Uint8Array ? publicKeyResponse : new Uint8Array(publicKeyResponse);
+      console.log("[VetkdCryptoService.encrypt] Step 1: publicKey", publicKey);
 
       // Test 2: Encrypt test data
       setTestResult("🔄 Step 2: Encrypting test data...");
