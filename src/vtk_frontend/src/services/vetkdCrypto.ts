@@ -77,7 +77,11 @@ export class VetkdCryptoService {
       const publicKey = publicKeyResponse.Ok as Uint8Array;
 
       // Step 3: Get encrypted decryption key from backend
-      const privateKeyResponse = await this.actor.vetkd_encrypted_key(transportSecretKey.public_key(), fileId);
+      let pubkeyArg = transportSecretKey.public_key();
+      if (!(pubkeyArg instanceof Uint8Array)) {
+        pubkeyArg = new Uint8Array(pubkeyArg);
+      }
+      const privateKeyResponse = await this.actor.vetkd_encrypted_key(pubkeyArg, fileId);
       if (!privateKeyResponse || "Err" in privateKeyResponse) {
         throw new Error("Error getting encrypted key from backend");
       }
