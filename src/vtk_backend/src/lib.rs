@@ -1,4 +1,5 @@
 pub mod api;
+pub mod vetkeys;
 mod memory;
 
 use candid::CandidType;
@@ -79,12 +80,12 @@ pub enum FileContent {
     Uploaded {
         num_chunks: u64,
         file_type: String,
-        owner_key: Vec<u8>,
+        vetkey_metadata: crate::vetkeys::EncryptedFileData,
     },
     PartiallyUploaded {
         num_chunks: u64,
         file_type: String,
-        owner_key: Vec<u8>, // VetKD public key
+        vetkey_metadata: crate::vetkeys::EncryptedFileData,
     },
 }
 

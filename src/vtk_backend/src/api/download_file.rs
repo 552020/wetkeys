@@ -1,40 +1,49 @@
 // pub use crate::ceil_division;
-use crate::{FileContent, FileData, FileDownloadResponse, State};
+use crate::{FileContent, FileData, FileDownloadResponse, State, vetkeys::VetKeyService};
 use candid::Principal;
 // use ic_cdk::export::candid::Principal;
 // use candid::Principal;
 // use ic_cdk::println;
 
-pub fn download_file(s: &State, caller: Principal, file_id: u64, chunk_id: u64) -> FileDownloadResponse {
+pub async fn download_file(s: &State, caller: Principal, file_id: u64, chunk_id: u64) -> Result<FileDownloadResponse, String> {
     // Check if caller is authenticated (not anonymous)
     if caller == Principal::anonymous() {
-        return FileDownloadResponse::PermissionError;
+        return Ok(FileDownloadResponse::PermissionError);
     }
 
     // Check if the caller owns this file
     match s.file_owners.get(&caller) {
         Some(files) => {
             if !files.contains(&file_id) {
-                return FileDownloadResponse::PermissionError;
+                return Ok(FileDownloadResponse::PermissionError);
             }
         }
-        None => return FileDownloadResponse::PermissionError,
+        None => return Ok(FileDownloadResponse::PermissionError),
     }
 
     match s.file_data.get(&file_id) {
-        None => FileDownloadResponse::NotFoundFile,
+        None => Ok(FileDownloadResponse::NotFoundFile),
         Some(file) => match &file.content {
-            FileContent::Uploaded { file_type, num_chunks, owner_key: _ } => {
+            FileContent::Uploaded { file_type, num_chunks, vetkey_metadata } => {
                 match s.file_contents.get(&(file_id, chunk_id)) {
-                    Some(contents) => FileDownloadResponse::FoundFile(FileData {
-                        contents: contents.clone(),
-                        file_type: file_type.clone(),
-                        num_chunks: *num_chunks,
-                    }),
-                    None => FileDownloadResponse::NotFoundFile,
+                    Some(encrypted_contents) => {
+                        // Decrypt the content using vetKeys
+                        let decrypted_contents = VetKeyService::decrypt_file_for_user(
+                            vetkey_metadata,
+                            caller,
+                            file_id,
+                        ).await.map_err(|e| format!("Decryption failed: {}", e))?;
+                        
+                        Ok(FileDownloadResponse::FoundFile(FileData {
+                            contents: decrypted_contents,
+                            file_type: file_type.clone(),
+                            num_chunks: *num_chunks,
+                        }))
+                    },
+                    None => Ok(FileDownloadResponse::NotFoundFile),
                 }
             }
-            _ => FileDownloadResponse::NotUploadedFile,
+            _ => Ok(FileDownloadResponse::NotUploadedFile),
         },
     }
 }

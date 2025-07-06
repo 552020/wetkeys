@@ -83,7 +83,18 @@ export default function FileUpload({ actor }: { actor: any }) {
               num_chunks,
             };
             console.log("upload_file_atomic args:", uploadArgs);
-            const backendFileId = await actor.upload_file_atomic(uploadArgs);
+            const uploadResult = await actor.upload_file_atomic(uploadArgs);
+            
+            // Handle the new Result type from vetKey integration
+            let backendFileId;
+            if (uploadResult && typeof uploadResult === 'object' && 'ok' in uploadResult) {
+              backendFileId = uploadResult.ok;
+            } else if (uploadResult && typeof uploadResult === 'object' && 'err' in uploadResult) {
+              throw new Error(`Upload failed: ${uploadResult.err}`);
+            } else {
+              // Handle legacy response format
+              backendFileId = uploadResult;
+            }
           } else {
             if (backendFileId == null) {
               setError("No file ID from backend for chunk upload.");

@@ -1,4 +1,4 @@
-use crate::{File, FileContent, FileMetadata, State};
+use crate::{File, FileContent, FileMetadata, State, vetkeys::VetKeyService};
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
 
@@ -72,30 +72,42 @@ pub struct UploadFileAtomicRequest {
 //     file_id
 // }
 
-pub fn upload_file_atomic(
+pub async fn upload_file_atomic(
     caller: Principal,
     request: UploadFileAtomicRequest,
     state: &mut State,
-) -> u64 {
+) -> Result<u64, String> {
     if caller == Principal::anonymous() {
-        panic!("Not authenticated");
+        return Err("Not authenticated".to_string());
     }
 
     let file_id = state.generate_file_id();
+    
+    // Get all owners for this file (initially just the caller)
+    let owners = vec![caller];
+    
+    // Encrypt the file content using vetKeys
+    let encrypted_data = VetKeyService::encrypt_file_for_owners(
+        request.content.clone(),
+        file_id,
+        owners.clone(),
+    ).await.map_err(|e| format!("Encryption failed: {}", e))?;
+    
     let content = if request.num_chunks == 1 {
         FileContent::Uploaded {
             num_chunks: request.num_chunks,
             file_type: request.file_type.clone(),
-            owner_key: vec![], // Empty owner key for now
+            vetkey_metadata: encrypted_data,
         }
     } else {
         FileContent::PartiallyUploaded {
             num_chunks: request.num_chunks,
             file_type: request.file_type.clone(),
-            owner_key: vec![], // Empty owner key for now
+            vetkey_metadata: encrypted_data,
         }
     };
     
+    // Store the encrypted content
     state.file_contents.insert((file_id, 0), request.content.clone());
     state.file_data.insert(
         file_id,
@@ -119,7 +131,7 @@ pub fn upload_file_atomic(
         .or_insert_with(Vec::new)
         .push(file_id);
 
-    file_id
+    Ok(file_id)
 }
 
 #[cfg(test)]

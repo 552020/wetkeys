@@ -8,9 +8,9 @@ use vtk_backend::api::{RegisterFileRequest, RegisterFileResponse};
 use vtk_backend::{CreateUserRequest, UpdateUserRequest, UserResponse, UserListResponse};
 
 #[update]
-fn upload_file_atomic(request: UploadFileAtomicRequest) -> u64 {
+async fn upload_file_atomic(request: UploadFileAtomicRequest) -> Result<u64, String> {
     let caller = ic_cdk::caller();
-    with_state_mut(|s| vtk_backend::api::upload_file_atomic(caller, request, s))
+    vtk_backend::api::upload_file_atomic(caller, request, &mut with_state_mut(|s| s)).await
 }
 
 #[update]
@@ -26,9 +26,9 @@ fn register_file(request: RegisterFileRequest) -> RegisterFileResponse {
 }
 
 #[query]
-fn download_file(file_id: u64, chunk_id: u64) -> FileDownloadResponse {
+async fn download_file(file_id: u64, chunk_id: u64) -> Result<FileDownloadResponse, String> {
     let caller = ic_cdk::caller();
-    with_state(|s| vtk_backend::api::download_file(s, caller, file_id, chunk_id))
+    vtk_backend::api::download_file(&with_state(|s| s), caller, file_id, chunk_id).await
 }
 
 #[update]

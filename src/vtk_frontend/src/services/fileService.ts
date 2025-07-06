@@ -23,22 +23,48 @@ export async function downloadFile(file: FileMetadata, actor?: any) {
     if (!actor) throw new Error("Actor is required for ICP file operations");
     // Assume chunk_id = 0 for now (single chunk)
     const response = await actor.download_file(file.file_id, BigInt(0));
-    if ("found_file" in response && response.found_file) {
-      const fileData = response.found_file;
-      if (fileData.contents && fileData.contents.length > 0) {
-        let uint8Content: Uint8Array;
-        if (fileData.contents instanceof Uint8Array) {
-          uint8Content = fileData.contents;
+    
+    // Handle the new Result type from vetKey integration
+    if (response && typeof response === 'object' && 'ok' in response) {
+      const result = response.ok;
+      if ("found_file" in result && result.found_file) {
+        const fileData = result.found_file;
+        if (fileData.contents && fileData.contents.length > 0) {
+          let uint8Content: Uint8Array;
+          if (fileData.contents instanceof Uint8Array) {
+            uint8Content = fileData.contents;
+          } else {
+            uint8Content = new Uint8Array(fileData.contents);
+          }
+          const blob = new Blob([uint8Content], { type: fileData.file_type || "application/octet-stream" });
+          triggerDownload(blob, file.file_name);
         } else {
-          uint8Content = new Uint8Array(fileData.contents);
+          throw new Error("ICP file content is empty");
         }
-        const blob = new Blob([uint8Content], { type: fileData.file_type || "application/octet-stream" });
-        triggerDownload(blob, file.file_name);
       } else {
-        throw new Error("ICP file content is empty");
+        throw new Error("ICP file download failed");
       }
+    } else if (response && typeof response === 'object' && 'err' in response) {
+      throw new Error(`Download failed: ${response.err}`);
     } else {
-      throw new Error("ICP file download failed");
+      // Handle legacy response format
+      if ("found_file" in response && response.found_file) {
+        const fileData = response.found_file;
+        if (fileData.contents && fileData.contents.length > 0) {
+          let uint8Content: Uint8Array;
+          if (fileData.contents instanceof Uint8Array) {
+            uint8Content = fileData.contents;
+          } else {
+            uint8Content = new Uint8Array(fileData.contents);
+          }
+          const blob = new Blob([uint8Content], { type: fileData.file_type || "application/octet-stream" });
+          triggerDownload(blob, file.file_name);
+        } else {
+          throw new Error("ICP file content is empty");
+        }
+      } else {
+        throw new Error("ICP file download failed");
+      }
     }
   } else if (file.storage_provider === "walrus") {
     // Download from Walrus aggregator
