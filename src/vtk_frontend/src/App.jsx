@@ -51,6 +51,7 @@ function App() {
         setActor(authedActor);
         setUserService(new UserService(authedActor));
         setIsAuthenticated(true);
+        await whoami();
       },
     });
   };
