@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
-// import { backend } from "@/declarations/backend"; // Adjust path if needed
 import { vtk_backend } from "../../../declarations/vtk_backend";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
 import { WalrusClient } from "@mysten/walrus";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import walrusWasmUrl from "@mysten/walrus-wasm/web/walrus_wasm_bg.wasm?url";
 import { Buffer } from "buffer";
-import { downloadFile, deleteFile } from "../services/fileService";
+import { payForFile } from "../services/payForFileService";
 
 // CREATE THE CLIENTS
 const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
@@ -62,6 +61,10 @@ export default function FileUpload() {
     setFileIdCounter((id) => id + 1);
 
     try {
+      // TODO: Integrate payment before upload
+      // await payForFile(fileId, amount); // Uncomment and wire up with real values when ready
+      // Example: await payForFile(file_id.toString(), "1");
+
       if (uploadTarget === "icp") {
         // ICP UPLOAD LOGIC
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
