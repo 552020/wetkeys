@@ -153,7 +153,7 @@ pub struct State {
 }
 
 impl State {
-    pub(crate) fn generate_file_id(&mut self) -> u64 {
+    pub fn generate_file_id(&mut self) -> u64 {
 
         let file_id = self.file_count;
         self.file_count += 1;
