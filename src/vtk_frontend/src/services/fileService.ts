@@ -17,7 +17,7 @@ const DEFAULT_AGGREGATOR_API = "https://aggregator.walrus-testnet.walrus.space/v
 const DEFAULT_PUBLISHER_API = "https://publisher.walrus-testnet.walrus.space/v1/blobs";
 
 // Download a file (ICP or Walrus)
-export async function downloadFile(file: FileMetadata, actor?: any) {
+export async function downloadFile(file: FileMetadata, actor?: any, authClient?: any) {
   if (file.storage_provider === "icp" || !file.storage_provider) {
     // Download from ICP backend
     if (!actor) throw new Error("Actor is required for ICP file operations");
@@ -32,7 +32,36 @@ export async function downloadFile(file: FileMetadata, actor?: any) {
         } else {
           uint8Content = new Uint8Array(fileData.contents);
         }
-        const blob = new Blob([uint8Content], { type: fileData.file_type || "application/octet-stream" });
+
+        // Check if file is encrypted (application/octet-stream usually indicates encrypted data)
+        let finalContent: Uint8Array;
+        let fileType: string;
+
+        if (fileData.file_type === "application/octet-stream" && authClient) {
+          try {
+            // Try to decrypt the content
+            const { VetkdCryptoService } = await import('./vetkdCrypto');
+            const vetkdService = new VetkdCryptoService(actor);
+            
+            // Get user principal bytes for decryption
+            const userPrincipalBytes = getPrincipalBytes(authClient);
+            
+            // Decrypt the content
+            finalContent = await vetkdService.decrypt(uint8Content, userPrincipalBytes);
+            fileType = "application/octet-stream"; // Default for decrypted content
+            console.log("File decrypted successfully");
+          } catch (decryptError) {
+            console.warn("Decryption failed, treating as unencrypted file:", decryptError);
+            finalContent = uint8Content;
+            fileType = fileData.file_type || "application/octet-stream";
+          }
+        } else {
+          // File is not encrypted or no auth client available
+          finalContent = uint8Content;
+          fileType = fileData.file_type || "application/octet-stream";
+        }
+
+        const blob = new Blob([finalContent], { type: fileType });
         triggerDownload(blob, file.file_name);
       } else {
         throw new Error("ICP file content is empty");
@@ -49,6 +78,25 @@ export async function downloadFile(file: FileMetadata, actor?: any) {
     const blob = await res.blob();
     triggerDownload(blob, file.file_name);
   }
+}
+
+// Helper function to get principal bytes from auth client
+function getPrincipalBytes(authClient: any): Uint8Array {
+  if (!authClient || !authClient.getIdentity) {
+    throw new Error("Invalid auth client");
+  }
+  
+  const identity = authClient.getIdentity();
+  if (!identity || !identity.getPrincipal) {
+    throw new Error("Invalid identity");
+  }
+  
+  const principal = identity.getPrincipal();
+  if (!principal || !principal.toUint8Array) {
+    throw new Error("Invalid principal");
+  }
+  
+  return principal.toUint8Array();
 }
 
 // Delete a file (ICP or Walrus)

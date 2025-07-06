@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { downloadFile, deleteFile } from "../services/fileService";
 
 // FileList component: lists files from the backend
-export default function FileList({ actor }: { actor: any }) {
+export default function FileList({ actor, authClient }: { actor: any; authClient?: any }) {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export default function FileList({ actor }: { actor: any }) {
     const fileId = file.file_id.toString();
     setActionLoading((prev) => ({ ...prev, [`download-${fileId}`]: true }));
     try {
-      await downloadFile(file, actor);
+      await downloadFile(file, actor, authClient);
     } catch (err) {
       console.error("Download failed:", err);
       alert(`Download failed: ${(err as Error).message}`);

@@ -3,15 +3,21 @@ use candid::{CandidType, Deserialize, Principal};
 
 #[derive(CandidType, Deserialize)]
 struct VetkdPublicKeyArgs {
-    canister_id: Option<Principal>,
     context: Vec<u8>,
     key_id: VetkdPublicKeyArgsKeyId,
+    canister_id: Option<Principal>,
 }
 
 #[derive(CandidType, Deserialize)]
 struct VetkdPublicKeyArgsKeyId {
-    curve: String,
     name: String,
+    curve: VetkdCurve,
+}
+
+#[derive(CandidType, Deserialize)]
+enum VetkdCurve {
+    #[serde(rename = "bls12_381_g2")]
+    Bls12381G2,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -27,12 +33,12 @@ pub enum VetkdPublicKeyResponse {
 
 pub async fn vetkd_public_key() -> VetkdPublicKeyResponse {
     let args = VetkdPublicKeyArgs {
-        canister_id: None,
         context: b"example-vetkd-dapp".to_vec(), // domain separator
         key_id: VetkdPublicKeyArgsKeyId {
-            curve: "bls12_381_g2".to_string(),
             name: "dfx_test_key".to_string(), // use "dfx_test_key" for local, "test_key_1" for mainnet
+            curve: VetkdCurve::Bls12381G2,
         },
+        canister_id: None,
     };
 
     match call::<(VetkdPublicKeyArgs,), (VetkdPublicKeyResult,)>(
