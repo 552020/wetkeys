@@ -1,4 +1,5 @@
 pub mod api;
+pub mod vetkd;
 mod memory;
 
 use candid::CandidType;

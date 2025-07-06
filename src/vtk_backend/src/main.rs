@@ -6,6 +6,7 @@ use vtk_backend::api::DeleteFileResult;
 use candid::Principal;
 use vtk_backend::api::{RegisterFileRequest, RegisterFileResponse};
 use vtk_backend::{CreateUserRequest, UpdateUserRequest, UserResponse, UserListResponse};
+use vtk_backend::vetkd::controller::vetkd_public_key::VetkdPublicKeyResponse;
 
 #[update]
 fn upload_file_atomic(request: UploadFileAtomicRequest) -> u64 {
@@ -37,6 +38,10 @@ fn delete_file(file_id: u64) -> DeleteFileResult {
     with_state_mut(|s| vtk_backend::api::delete_file(s, caller, file_id))
 }
 
+#[update]
+async fn vetkd_public_key() -> VetkdPublicKeyResponse {
+    vtk_backend::vetkd::controller::vetkd_public_key::vetkd_public_key().await
+}
 
 #[query]
 fn list_files() -> Vec<PublicFileMetadata> {

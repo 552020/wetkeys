@@ -7,6 +7,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import walrusWasmUrl from "@mysten/walrus-wasm/web/walrus_wasm_bg.wasm?url";
 import { Buffer } from "buffer";
 import { downloadFile, deleteFile } from "../services/fileService";
+import { UploadService, ExtendedActorType } from "../services/uploadService";
 
 // CREATE THE CLIENTS
 const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
@@ -20,7 +21,7 @@ const CHUNK_SIZE = 2 * 1024 * 1024;
 
 // Default Walrus publisher endpoint for API upload
 const DEFAULT_PUBLISHER_API = "https://publisher.walrus-testnet.walrus.space/v1/blobs";
-export default function FileUpload({ actor }: { actor: any }) {
+export default function FileUpload({ actor, authClient }: { actor: ExtendedActorType; authClient?: any }) {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -34,6 +35,8 @@ export default function FileUpload({ actor }: { actor: any }) {
   const [uploadTarget, setUploadTarget] = useState<"icp" | "walrus">("icp");
   // New: Upload method state
   const [method, setMethod] = useState<"SDK" | "API">("SDK");
+  // Encryption state
+  const [enableEncryption, setEnableEncryption] = useState<boolean>(true);
 
   // TODO: PRODUCTION - Add wallet connection state
   // const [wallet, setWallet] = useState<any>(null);
@@ -63,43 +66,29 @@ export default function FileUpload({ actor }: { actor: any }) {
 
     try {
       if (uploadTarget === "icp") {
-        // ICP UPLOAD LOGIC
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const num_chunks = BigInt(totalChunks);
-
-        let backendFileId = null;
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * CHUNK_SIZE;
-          const end = Math.min(start + CHUNK_SIZE, file.size);
-          const chunk = file.slice(start, end);
-          const buffer = await chunk.arrayBuffer();
-
-          if (i === 0) {
-            // First chunk with metadata
-            const uploadArgs = {
-              name: file.name, // ✅ Backend expects 'name'
-              content: new Uint8Array(buffer), // ✅ Backend expects 'content'
-              file_type: file.type || "application/octet-stream",
-              num_chunks,
-            };
-            console.log("upload_file_atomic args:", uploadArgs);
-            const backendFileId = await actor.upload_file_atomic(uploadArgs);
-          } else {
-            if (backendFileId == null) {
-              setError("No file ID from backend for chunk upload.");
-              setIsUploading(false);
-              return;
-            }
-            await vtk_backend.upload_file_continue({
-              file_id: backendFileId,
-              file_type: file.type || "application/octet-stream",
-              num_chunks: BigInt(totalChunks),
-              file_content: new Uint8Array(buffer),
-            });
-          }
-
-          setProgress(Math.round(((i + 1) / totalChunks) * 100));
+        // ICP UPLOAD LOGIC WITH VETKEYS ENCRYPTION
+        if (!authClient) {
+          throw new Error("Authentication required for encrypted uploads");
         }
+
+        // Get user principal bytes for encryption
+        const userPrincipalBytes = UploadService.getUserPrincipalBytes(authClient);
+        
+        // Create upload service with encryption
+        const uploadService = new UploadService(actor);
+        
+        // Upload with encryption
+        const fileId = await uploadService.uploadFile(file, userPrincipalBytes, {
+          onProgress: (progress) => {
+            setProgress(progress.percentage);
+          },
+          onError: (error) => {
+            setError(error.message);
+          },
+          enableEncryption: enableEncryption
+        });
+        
+        console.log("File uploaded with encryption, ID:", fileId);
       } else if (uploadTarget === "walrus") {
         // TODO: PRODUCTION - Add wallet connection check
         // if (!wallet) {
@@ -235,6 +224,23 @@ export default function FileUpload({ actor }: { actor: any }) {
             </select>
           </>
         )}
+        {/* Encryption toggle for ICP uploads */}
+        {uploadTarget === "icp" && (
+          <>
+            <label htmlFor="enableEncryption" className="text-sm font-medium text-gray-700">
+              Encryption:
+            </label>
+            <select
+              id="enableEncryption"
+              value={enableEncryption ? "enabled" : "disabled"}
+              onChange={(e) => setEnableEncryption(e.target.value === "enabled")}
+              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+            >
+              <option value="enabled">Vetkeys Enabled</option>
+              <option value="disabled">No Encryption</option>
+            </select>
+          </>
+        )}
       </div>
 
       <input
@@ -260,6 +266,11 @@ export default function FileUpload({ actor }: { actor: any }) {
           {uploadTarget === "walrus" && (
             <div>
               <strong>Method:</strong> {method}
+            </div>
+          )}
+          {uploadTarget === "icp" && (
+            <div>
+              <strong>Encryption:</strong> {enableEncryption ? "Vetkeys Enabled" : "No Encryption"}
             </div>
           )}
         </div>

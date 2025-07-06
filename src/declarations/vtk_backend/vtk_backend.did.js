@@ -87,6 +87,10 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Null,
     'Err' : error_with_file_upload,
   });
+  const VetkdPublicKeyResponse = IDL.Variant({
+    'Ok' : IDL.Vec(IDL.Nat8),
+    'Err' : IDL.Text,
+  });
   return IDL.Service({
     'create_user_profile' : IDL.Func(
         [create_user_request],
@@ -125,6 +129,7 @@ export const idlFactory = ({ IDL }) => {
         [upload_file_response],
         [],
       ),
+    'vetkd_public_key' : IDL.Func([], [VetkdPublicKeyResponse], []),
     'whoami' : IDL.Func([], [IDL.Principal], ['query']),
   });
 };

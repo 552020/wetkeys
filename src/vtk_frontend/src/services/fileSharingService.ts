@@ -1,64 +1,54 @@
-import { ActorSubclass } from "@dfinity/agent";
-import { 
-  _SERVICE, 
-  share_file_request,
-  unshare_file_request,
-  get_shared_files_response,
-  file_sharing_response
-} from "declarations/vtk_backend/vtk_backend.did";
+// import {
+//   share_file_request,
+//   unshare_file_request,
+//   get_shared_files_response,
+//   file_sharing_response,
+// } from "declarations/vtk_backend/vtk_backend.did";
 
-export type ShareFileRequest = share_file_request;
-export type UnshareFileRequest = unshare_file_request;
-export type GetSharedFilesResponse = get_shared_files_response;
-export type FileSharingResponse = file_sharing_response;
-
+// TODO: Implement file sharing functionality when backend supports it
 export class FileSharingService {
-  private actor: ActorSubclass<_SERVICE>;
+  constructor(private actor: any) {}
 
-  constructor(actor: ActorSubclass<_SERVICE>) {
-    this.actor = actor;
+  async shareFile(fileId: bigint, userPrincipal: string): Promise<void> {
+    // TODO: Implement when backend supports file sharing
+    console.warn("File sharing not yet implemented");
+    throw new Error("File sharing not yet implemented");
+    
+    // const request: share_file_request = {
+    //   file_id: fileId,
+    //   user_principal: userPrincipal,
+    // };
+    // await this.actor.share_file(request);
   }
 
-  async shareFile(fileId: bigint, targetUsername: string): Promise<FileSharingResponse> {
-    try {
-      return await this.actor.share_file({
-        file_id: fileId,
-        target_username: targetUsername,
-      });
-    } catch (error) {
-      console.error("Error sharing file:", error);
-      throw error;
-    }
+  async unshareFile(fileId: bigint, userPrincipal: string): Promise<void> {
+    // TODO: Implement when backend supports file sharing
+    console.warn("File sharing not yet implemented");
+    throw new Error("File sharing not yet implemented");
+    
+    // const request: unshare_file_request = {
+    //   file_id: fileId,
+    //   user_principal: userPrincipal,
+    // };
+    // await this.actor.unshare_file(request);
   }
 
-  async unshareFile(fileId: bigint, targetUsername: string): Promise<FileSharingResponse> {
-    try {
-      return await this.actor.unshare_file({
-        file_id: fileId,
-        target_username: targetUsername,
-      });
-    } catch (error) {
-      console.error("Error unsharing file:", error);
-      throw error;
-    }
-  }
-
-  async getSharedFiles(): Promise<GetSharedFilesResponse> {
-    try {
-      return await this.actor.get_shared_files();
-    } catch (error) {
-      console.error("Error getting shared files:", error);
-      throw error;
-    }
+  async getSharedFiles(): Promise<any[]> {
+    // TODO: Implement when backend supports file sharing
+    console.warn("File sharing not yet implemented");
+    return [];
+    
+    // const response: get_shared_files_response = await this.actor.get_shared_files();
+    // return response;
   }
 
   // Helper method to check if a response is successful
-  isFileSharingResponseOk(response: FileSharingResponse): boolean {
+  isFileSharingResponseOk(response: any): boolean {
     return "ok" in response;
   }
 
   // Helper method to get error message from response
-  getFileSharingErrorMessage(response: FileSharingResponse): string {
+  getFileSharingErrorMessage(response: any): string {
     if ("ok" in response) {
       return "Success";
     } else if ("permission_error" in response) {

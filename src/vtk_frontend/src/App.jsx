@@ -145,7 +145,7 @@ const identityProvider =
           <div>
             {currentView === "files" && (
               <div>
-                <FileUpload actor={actor} />
+                <FileUpload actor={actor} authClient={authClient} />
                 <FileList actor={actor} />
               </div>
             )}
